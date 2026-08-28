@@ -32,6 +32,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        WudroidBootstrap.applyFirstRunDefaults(this);
+
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
@@ -79,7 +81,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        // Match the original Cemu launcher behavior before opening emulation.
         NativeSettings.saveSettings();
     }
 
@@ -90,6 +91,10 @@ public class MainActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
                 | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(intent, REQUEST_OPEN_GAME);
+    }
+
+    private void launch(Class<?> activity) {
+        startActivity(new Intent(this, activity));
     }
 
     @Override
@@ -105,18 +110,13 @@ public class MainActivity extends AppCompatActivity {
                 (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         try {
             getContentResolver().takePersistableUriPermission(uri, takeFlags);
-        } catch (SecurityException ignored) {
-            // Some document providers do not support persistable grants.
-        }
+        } catch (SecurityException ignored) {}
 
         try {
             NativeSettings.saveSettings();
-
             Intent emulationIntent = new Intent(this, EmulationActivity.class);
             emulationIntent.setAction(Intent.ACTION_VIEW);
-            // Use the exact launch contract used by the upstream Android port.
             emulationIntent.putExtra(EmulationActivity.EXTRA_LAUNCH_PATH, uri.toString());
-            // Keep data too so content URI permission propagation remains explicit.
             emulationIntent.setData(uri);
             emulationIntent.setClipData(ClipData.newRawUri("wiiu-game", uri));
             emulationIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -129,19 +129,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public final class WudroidBridge {
-        @JavascriptInterface
-        public void openGame() {
+        @JavascriptInterface public void openGame() {
             runOnUiThread(MainActivity.this::openGamePicker);
         }
-
-        @JavascriptInterface
-        public String coreStatus() {
+        @JavascriptInterface public void openSettings() {
+            runOnUiThread(() -> launch(WudroidSettingsActivity.class));
+        }
+        @JavascriptInterface public void openGameFolders() {
+            runOnUiThread(() -> launch(WudroidGamePathsActivity.class));
+        }
+        @JavascriptInterface public void openTouchSettings() {
+            runOnUiThread(() -> launch(WudroidTouchSettingsActivity.class));
+        }
+        @JavascriptInterface public void openLibraryManager() {
+            runOnUiThread(() -> launch(WudroidManagerActivity.class));
+        }
+        @JavascriptInterface public String coreStatus() {
             return "Cemu Android core loaded";
         }
-
-        @JavascriptInterface
-        public String version() {
-            return "0.0.6";
+        @JavascriptInterface public String version() {
+            return "0.0.7";
         }
     }
 }

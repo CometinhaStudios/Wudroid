@@ -14,6 +14,16 @@
 .screen{display:none;padding-bottom:96px}.screen.active{display:block}.title{padding:20px 16px 4px}.title h1{margin:0;font-size:26px}.title p{margin:4px 0;color:var(--muted);font-size:13px}.settingsgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:14px 16px}.settingsCard{border:1px solid #dcebf3;background:#fff;border-radius:20px;padding:17px 14px;text-align:left;box-shadow:var(--shadow)}.settingsCard .ico{width:48px;height:48px;border-radius:16px;background:linear-gradient(145deg,#effbff,#dff5ff);display:grid;place-items:center;margin-bottom:12px}.settingsCard svg{width:28px;height:28px;stroke:#0aaef0}.settingsCard b{font-size:15px}.settingsCard small{display:block;color:var(--muted);line-height:1.35;margin-top:5px}.mode{margin:0 16px 14px;background:#fff;border:1px solid #dcebf3;border-radius:20px;padding:14px;box-shadow:var(--shadow)}.modehead{display:flex;justify-content:space-between;align-items:center}.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.chip{padding:10px 5px;border-radius:13px;text-align:center;border:1px solid #d8e7ef;font-size:12px;font-weight:800;background:#f9fcfe}.chip.sel{background:linear-gradient(135deg,#08aef1,#52d1fb);color:#fff;border-color:transparent}
 .detailHero{margin:14px 16px;border-radius:26px;padding:20px;background:linear-gradient(140deg,#0a86d7,#53d7ff);color:white;box-shadow:0 12px 30px #118ec333}.detailHero h1{margin:0;font-size:24px}.detailHero p{opacity:.85;margin:4px 0 18px}.play{width:100%;border:0;background:#fff;color:#078bcf;border-radius:15px;padding:13px;font-weight:900}.actions{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:0 16px}.action{background:#fff;border:1px solid #dceaf2;border-radius:18px;padding:15px;display:flex;align-items:center;gap:11px;box-shadow:var(--shadow);font-size:13px;font-weight:800}.action .mini{width:38px;height:38px;border-radius:13px;background:#e9f9ff;display:grid;place-items:center}.action svg{width:21px;height:21px;stroke:#0aaef0}
 .note{margin:14px 16px;padding:13px 14px;border-radius:16px;background:#eef9ff;border:1px solid #ccecff;color:#517082;font-size:12px;line-height:1.5}.footerSpace{height:8px}
+.quickMenu{position:fixed;right:14px;top:72px;z-index:80;width:min(300px,calc(100vw - 28px));background:#fff;border:1px solid var(--line);border-radius:18px;padding:8px;box-shadow:0 18px 48px rgba(30,78,110,.22);display:none}
+.quickMenu.open{display:block}
+.quickItem{width:100%;border:0;background:transparent;border-radius:13px;padding:12px 13px;text-align:left;color:var(--ink);font-weight:750;font-size:13px}
+.quickItem:active{background:#edf9ff}
+.rowBtns{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.rowBtns .add{margin-top:0}
+.action{cursor:pointer}
+.settingsCard{cursor:pointer}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border-radius:999px;background:#eaf9ff;color:#078bcf;font-size:11px;font-weight:800;border:1px solid #cdeefe;margin-top:10px}
+
 
 
 /* ===== Wudroid responsive layouts ===== */
@@ -97,9 +107,19 @@
 </style>
 </head>
 <body><div class="app">
-<div class="top"><div class="brand"><div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M3 5l3 14 6-10 6 10 3-14"/><circle cx="12" cy="15" r="1.3" fill="white" stroke="none"/></svg></div><div><b>Wudroid</b><small>Wii U emulator for Android</small></div></div><button class="topbtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg></button><button class="topbtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button></div>
+<div class="top"><div class="brand"><div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M3 5l3 14 6-10 6 10 3-14"/><circle cx="12" cy="15" r="1.3" fill="white" stroke="none"/></svg></div><div><b>Wudroid</b><small>Wii U emulator for Android</small></div></div><button class="topbtn" onclick="show('home')" aria-label="Biblioteca"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg></button><button class="topbtn" onclick="toggleQuickMenu()" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button></div>
+<div id="quickMenu" class="quickMenu">
+<button class="quickItem" onclick="openGameFolders();closeQuickMenu()">Adicionar pasta de jogos</button>
+<button class="quickItem" onclick="openLibraryManager();closeQuickMenu()">Gerenciar biblioteca</button>
+<button class="quickItem" onclick="openSettings();closeQuickMenu()">Configurações</button>
+<button class="quickItem" onclick="openTouchSettings();closeQuickMenu()">Controles na tela</button>
+</div>
 
-<section id="home" class="screen active"><div class="hero"><div class="welcome"><h1>Sua biblioteca Wii U</h1><p>Emulação experimental ativa. Abra um jogo Wii U compatível para testar o primeiro boot do Wudroid.</p><button class="add" onclick="openGame()">Abrir jogo</button></div></div><div class="section"><div class="sectionhead"><h2>Biblioteca</h2><span>Visualização em grade</span></div><div class="games">
+<section id="home" class="screen active"><div class="hero"><div class="welcome"><h1>Sua biblioteca Wii U</h1><p>Emulação experimental ativa. Abra um jogo Wii U compatível para testar o primeiro boot do Wudroid.</p><div class="rowBtns">
+<button class="add" onclick="openGame()">Abrir jogo</button>
+<button class="add" onclick="openGameFolders()">Adicionar pasta</button>
+<button class="add" onclick="openLibraryManager()">Gerenciar biblioteca</button>
+</div></div></div><div class="section"><div class="sectionhead"><h2>Biblioteca</h2><span>Visualização em grade</span></div><div class="games">
 <div class="game" onclick="show('game')"><div class="cover c1"><div class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M7 10h10l2 7a2 2 0 0 1-3 2l-2-2h-4l-2 2a2 2 0 0 1-3-2z"/><path d="M8 13h3M9.5 11.5v3M15.5 13h.01M17 14.5h.01"/></svg></div></div><div class="gameinfo"><b>Jogo de demonstração</b><small>Wii U • Favorito</small></div></div>
 <div class="game"><div class="cover c2"><div class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></div></div><div class="gameinfo"><b>Recentes</b><small>Últimos jogos usados</small></div></div>
 <div class="game"><div class="cover c3"><div class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M4 6h6l2 2h8v10H4z"/></svg></div></div><div class="gameinfo"><b>Instalados</b><small>Conteúdo local</small></div></div>
@@ -107,32 +127,40 @@
 </div></div></section>
 
 <section id="game" class="screen"><div class="detailHero"><h1>Emulação experimental</h1><p>Cemu Core • ARM64 • Vulkan</p><button class="play" onclick="openGame()">▶ &nbsp; ABRIR JOGO</button></div><div class="actions">
-<div class="action"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5L9 6.1a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3.1h5l.5-3.1a8 8 0 0 0 1.7-1l2.4 1 2-3.4L19 13a7 7 0 0 0 0-1z"/></svg></span>Config. do jogo</div>
-<div class="action"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m12 3 4 4-4 4-4-4zM8 13l4 4 4-4M8 17l4 4 4-4"/></svg></span>Graphic Packs</div>
-<div class="action"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 4h14v16H5z"/><path d="M8 4v6h8V4M8 16h8"/></svg></span>Saves</div>
-<div class="action"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg></span>Informações</div>
-</div><div class="note">Primeira integração real do core. O botão ABRIR JOGO inicia o seletor do Android e envia o arquivo escolhido ao núcleo de emulação.</div></section>
+<div class="action" onclick="openLibraryManager()"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5L9 6.1a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3.1h5l.5-3.1a8 8 0 0 0 1.7-1l2.4 1 2-3.4L19 13a7 7 0 0 0 0-1z"/></svg></span>Perfis por jogo</div>
+<div class="action" onclick="openLibraryManager()"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m12 3 4 4-4 4-4-4zM8 13l4 4 4-4M8 17l4 4 4-4"/></svg></span>Graphic Packs</div>
+<div class="action" onclick="openLibraryManager()"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 4h14v16H5z"/><path d="M8 4v6h8V4M8 16h8"/></svg></span>Saves</div>
+<div class="action" onclick="openSettings()"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg></span>Configurações</div>
+</div><div class="note">Controles touch vêm ativados por padrão nesta versão. Durante o jogo, pressione Voltar para abrir o menu rápido do Cemu: mostrar/ocultar controles, editar posição, trocar TV/GamePad, movimento e sair.</div></section>
 
 <section id="settings" class="screen"><div class="title"><h1>Configurações</h1><p>Cards grandes, ícones próprios e explicações claras.</p></div><div class="mode"><div class="modehead"><b>Nível de configuração</b><small style="color:var(--muted)">Recomendado: Básico</small></div><div class="chips"><div class="chip sel">Básico</div><div class="chip">Avançado</div><div class="chip">Developer</div></div></div><div class="settingsgrid">
-<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div><b>Gráficos</b><small>Resolução, Vulkan, filtros, shaders e sincronização.</small></div>
-<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M7 10h10l2 7a2 2 0 0 1-3 2l-2-2h-4l-2 2a2 2 0 0 1-3-2z"/><path d="M8 13h3M9.5 11.5v3M15.5 13h.01M17 14.5h.01"/></svg></div><b>Controles</b><small>GamePad, Pro Controller, touch e perfis.</small></div>
-<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 10v4h4l5 4V6L9 10z"/><path d="M17 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg></div><b>Áudio</b><small>Volume, saída da TV, GamePad e latência.</small></div>
-<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></div><b>Sistema</b><small>CPU, memória, arquivos e comportamento do emulador.</small></div>
-<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 15a8 8 0 1 1 16 0"/><path d="m12 15 4-5"/></svg></div><b>Desempenho</b><small>Perfis automáticos, JIT e opções de velocidade.</small></div>
-<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg></div><b>Overlay</b><small>FPS, CPU, GPU, VRAM e estatísticas durante o jogo.</small></div>
-<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m12 3 4 4-4 4-4-4zM8 13l4 4 4-4M8 17l4 4 4-4"/></svg></div><b>Drivers</b><small>Driver Vulkan do sistema e drivers customizados.</small></div>
-<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div><b>Online</b><small>Contas, rede e serviços compatíveis.</small></div>
+<div class="settingsCard" onclick="openSettings()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div><b>Gráficos</b><small>Resolução, Vulkan, filtros, shaders e sincronização.</small></div>
+<div class="settingsCard" onclick="openSettings()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M7 10h10l2 7a2 2 0 0 1-3 2l-2-2h-4l-2 2a2 2 0 0 1-3-2z"/><path d="M8 13h3M9.5 11.5v3M15.5 13h.01M17 14.5h.01"/></svg></div><b>Controles</b><small>GamePad, Pro Controller, touch e perfis.</small></div>
+<div class="settingsCard" onclick="openSettings()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 10v4h4l5 4V6L9 10z"/><path d="M17 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg></div><b>Áudio</b><small>Volume, saída da TV, GamePad e latência.</small></div>
+<div class="settingsCard" onclick="openSettings()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></div><b>Sistema</b><small>CPU, memória, arquivos e comportamento do emulador.</small></div>
+<div class="settingsCard" onclick="openSettings()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 15a8 8 0 1 1 16 0"/><path d="m12 15 4-5"/></svg></div><b>Desempenho</b><small>Perfis automáticos, JIT e opções de velocidade.</small></div>
+<div class="settingsCard" onclick="openSettings()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg></div><b>Overlay</b><small>FPS, CPU, GPU, VRAM e estatísticas durante o jogo.</small></div>
+<div class="settingsCard" onclick="openSettings()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m12 3 4 4-4 4-4-4zM8 13l4 4 4-4M8 17l4 4 4-4"/></svg></div><b>Drivers</b><small>Driver Vulkan do sistema e drivers customizados.</small></div>
+<div class="settingsCard" onclick="openSettings()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div><b>Online</b><small>Contas, rede e serviços compatíveis.</small></div>
+
+<div class="settingsCard" onclick="openTouchSettings()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M7 10h10l2 7a2 2 0 0 1-3 2l-2-2h-4l-2 2a2 2 0 0 1-3-2z"/><path d="M8 13h3M9.5 11.5v3M15.5 13h.01M17 14.5h.01"/></svg></div><b>Controles na tela</b><small>Ativar, transparência, botões visíveis e layout touch.</small><span class="pill">Funcional</span></div>
+<div class="settingsCard" onclick="openGameFolders()"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 6h7l2 2h9v10H3z"/><path d="M12 11v5M9.5 13.5h5"/></svg></div><b>Pastas de jogos</b><small>Adicionar e remover diretórios usados pela biblioteca.</small><span class="pill">Funcional</span></div>
 </div></section>
 
-<section id="about" class="screen"><div class="title"><h1>Wudroid</h1><p>0.0.5 • Emulation Build</p></div><div class="note" style="font-size:14px">Build de emulação do Wudroid usando o core Android do Cemu. A interface é nossa; a emulação ainda é experimental e será migrada gradualmente para a arquitetura própria do Wudroid.</div></section>
+<section id="about" class="screen"><div class="title"><h1>Wudroid</h1><p>0.0.7 • Controls & Settings</p></div><div class="note" style="font-size:14px">Primeira base funcional do Wudroid: emulação ARM64/Vulkan, configurações nativas, pastas de jogos, controles touch e gerenciamento de perfis por jogo.</div></section>
 
 <nav class="tabs"><button class="tab active" data-target="home" onclick="show('home',this)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 10.8 12 3.8l9 7V20a1 1 0 0 1-1 1h-5.2v-6.2H9.2V21H4a1 1 0 0 1-1-1z"/><path d="M9.2 21v-6.2h5.6V21"/></svg>Início</button><button class="tab" data-target="game" onclick="show('game',this)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M7 10h10l2 7a2 2 0 0 1-3 2l-2-2h-4l-2 2a2 2 0 0 1-3-2z"/><path d="M8 13h3M9.5 11.5v3M15.5 13h.01M17 14.5h.01"/></svg>Jogo</button><button class="tab" data-target="settings" onclick="show('settings',this)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5L9 6.1a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3.1h5l.5-3.1a8 8 0 0 0 1.7-1l2.4 1 2-3.4L19 13a7 7 0 0 0 0-1z"/></svg>Config.</button><button class="tab" data-target="about" onclick="show('about',this)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>Sobre</button></nav>
 </div>
 <script>
-function show(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(btn){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}else{document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.target===id))}scrollTo({top:0,behavior:'smooth'})}
-function openGame(){
-  if(window.WudroidNative && typeof WudroidNative.openGame === 'function'){ WudroidNative.openGame(); return; }
-  alert('A ponte nativa ainda não foi carregada neste preview.');
-}
+function show(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(btn){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}else{document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.target===id))}closeQuickMenu();scrollTo({top:0,behavior:'smooth'})}
+function nativeCall(name){if(window.WudroidNative&&typeof WudroidNative[name]==='function'){WudroidNative[name]();return true}alert('Função nativa indisponível nesta build.');return false}
+function openGame(){nativeCall('openGame')}
+function openSettings(){nativeCall('openSettings')}
+function openGameFolders(){nativeCall('openGameFolders')}
+function openTouchSettings(){nativeCall('openTouchSettings')}
+function openLibraryManager(){nativeCall('openLibraryManager')}
+function toggleQuickMenu(){document.getElementById('quickMenu').classList.toggle('open')}
+function closeQuickMenu(){document.getElementById('quickMenu').classList.remove('open')}
+document.addEventListener('click',e=>{const m=document.getElementById('quickMenu');if(m&&m.classList.contains('open')&&!m.contains(e.target)&&!e.target.closest('.topbtn:last-child'))m.classList.remove('open')})
 </script>
 </body></html>
