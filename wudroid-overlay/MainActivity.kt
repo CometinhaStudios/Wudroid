@@ -807,8 +807,8 @@ private fun AdvancedSettingsScreen(onBack: () -> Unit) {
     var vsync by remember { mutableIntStateOf(safeInt { NativeSettings.getVsyncMode() }) }
 
     fun makeOverlayVisible() {
-        if (overlayPosition == NativeSettings.OVERLAY_SCREEN_POSITION_DISABLED) {
-            overlayPosition = NativeSettings.OVERLAY_SCREEN_POSITION_TOP_LEFT
+        if (overlayPosition == NativeSettings.OverlayScreenPosition.DISABLED) {
+            overlayPosition = NativeSettings.OverlayScreenPosition.TOP_LEFT
             safeRun { NativeSettings.setOverlayPosition(overlayPosition) }
         }
     }
@@ -943,8 +943,8 @@ private fun AdvancedSettingsScreen(onBack: () -> Unit) {
         SectionLabel("Posição do monitor")
         ChoiceButtons(
             choices = listOf(
-                NativeSettings.OVERLAY_SCREEN_POSITION_TOP_LEFT to "Sup. esq.",
-                NativeSettings.OVERLAY_SCREEN_POSITION_TOP_RIGHT to "Sup. dir."
+                NativeSettings.OverlayScreenPosition.TOP_LEFT to "Sup. esq.",
+                NativeSettings.OverlayScreenPosition.TOP_RIGHT to "Sup. dir."
             ),
             selected = overlayPosition
         ) {
@@ -954,8 +954,8 @@ private fun AdvancedSettingsScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         ChoiceButtons(
             choices = listOf(
-                NativeSettings.OVERLAY_SCREEN_POSITION_BOTTOM_LEFT to "Inf. esq.",
-                NativeSettings.OVERLAY_SCREEN_POSITION_BOTTOM_RIGHT to "Inf. dir."
+                NativeSettings.OverlayScreenPosition.BOTTOM_LEFT to "Inf. esq.",
+                NativeSettings.OverlayScreenPosition.BOTTOM_RIGHT to "Inf. dir."
             ),
             selected = overlayPosition
         ) {
@@ -1584,9 +1584,9 @@ private fun startGame(context: Context, game: Game) {
             NativeSettings.isOverlayVRAMUsageEnabled() ||
             NativeSettings.isOverlayDebugEnabled()
         if (anyPerformanceStatEnabled &&
-            NativeSettings.getOverlayPosition() == NativeSettings.OVERLAY_SCREEN_POSITION_DISABLED
+            NativeSettings.getOverlayPosition() == NativeSettings.OverlayScreenPosition.DISABLED
         ) {
-            NativeSettings.setOverlayPosition(NativeSettings.OVERLAY_SCREEN_POSITION_TOP_LEFT)
+            NativeSettings.setOverlayPosition(NativeSettings.OverlayScreenPosition.TOP_LEFT)
             NativeSettings.saveSettings()
         }
     }
