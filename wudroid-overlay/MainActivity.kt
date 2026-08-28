@@ -19,6 +19,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -91,14 +92,17 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import info.cemu.cemu.emulation.EmulationActivity
-import info.cemu.cemu.gamelist.GameListViewModel
-import info.cemu.cemu.inputoverlay.InputOverlaySettingsManager
+import info.cemu.cemu.games.list.GamesListViewModel
+import info.cemu.cemu.common.settings.AppSettingsStore
+import info.cemu.cemu.common.settings.InputOverlaySettings
 import info.cemu.cemu.nativeinterface.NativeActiveSettings
 import info.cemu.cemu.nativeinterface.NativeGameTitles
 import info.cemu.cemu.nativeinterface.NativeGameTitles.Game
 import info.cemu.cemu.nativeinterface.NativeInput
 import info.cemu.cemu.nativeinterface.NativeSettings
 import java.io.File
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlin.math.roundToInt
 
 private val WBlue = Color(0xFF00B8F5)
@@ -135,20 +139,23 @@ class MainActivity : ComponentActivity() {
         // if Cemu has Controller 1 disabled, configure it as Wii U GamePad.
         try {
             if (NativeInput.isControllerDisabled(0)) {
-                NativeInput.setControllerType(0, NativeInput.EMULATED_CONTROLLER_TYPE_VPAD)
+                NativeInput.setControllerType(0, NativeInput.EmulatedControllerType.VPAD)
+                NativeInput.saveInputs()
                 NativeSettings.saveSettings()
             }
         } catch (_: Throwable) {}
 
         // Make the touch overlay genuinely visible by default.
         try {
-            val manager = InputOverlaySettingsManager(this)
-            val overlay = manager.overlaySettings
-            if (!overlay.isOverlayEnabled || overlay.controllerIndex != 0) {
-                overlay.isOverlayEnabled = true
-                overlay.controllerIndex = 0
-                if (overlay.alpha < 150) overlay.alpha = 150
-                manager.overlaySettings = overlay
+            val overlay = getOverlaySettings()
+            if (!overlay.isOverlayEnabled || overlay.controllerIndex != 0 || overlay.alpha < 150) {
+                updateOverlaySettings {
+                    it.copy(
+                        isOverlayEnabled = true,
+                        controllerIndex = 0,
+                        alpha = maxOf(it.alpha, 150),
+                    )
+                }
             }
         } catch (_: Throwable) {}
 
@@ -426,6 +433,7 @@ private fun SetupBody(text: String) {
     Text(text, color = WMuted, fontSize = 15.sp, lineHeight = 22.sp)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SetupActionCard(
     icon: WIcon,
@@ -488,7 +496,7 @@ private fun LibraryScreen(
     onGameProfile: (Game) -> Unit,
 ) {
     val context = LocalContext.current
-    val gameListViewModel: GameListViewModel = viewModel()
+    val gameListViewModel: GamesListViewModel = viewModel()
     val games by gameListViewModel.games.collectAsState()
     var search by remember { mutableStateOf(TextFieldValue("")) }
     var compact by remember { mutableStateOf(false) }
@@ -793,9 +801,9 @@ private fun AdvancedSettingsScreen(onBack: () -> Unit) {
         SectionLabel("VSync")
         ChoiceButtons(
             choices = listOf(
-                NativeSettings.VSYNC_MODE_OFF to "Desligado",
-                NativeSettings.VSYNC_MODE_DOUBLE_BUFFERING to "Duplo",
-                NativeSettings.VSYNC_MODE_TRIPLE_BUFFERING to "Triplo"
+                NativeSettings.VSyncMode.OFF to "Desligado",
+                NativeSettings.VSyncMode.DOUBLE_BUFFERING to "Duplo",
+                NativeSettings.VSyncMode.TRIPLE_BUFFERING to "Triplo"
             ),
             selected = vsync
         ) {
@@ -807,14 +815,12 @@ private fun AdvancedSettingsScreen(onBack: () -> Unit) {
 
 @Composable
 private fun ControlsScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
-    val manager = remember { InputOverlaySettingsManager(context) }
-    var overlaySettings by remember { mutableStateOf(manager.overlaySettings) }
+    var overlaySettings by remember { mutableStateOf(getOverlaySettings()) }
     var controllerType by remember {
         mutableIntStateOf(
             safeInt {
                 if (NativeInput.isControllerDisabled(0))
-                    NativeInput.EMULATED_CONTROLLER_TYPE_DISABLED
+                    NativeInput.EmulatedControllerType.DISABLED
                 else NativeInput.getControllerType(0)
             }
         )
@@ -825,23 +831,26 @@ private fun ControlsScreen(onBack: () -> Unit) {
         SectionLabel("Controle 1")
         ChoiceButtons(
             choices = listOf(
-                NativeInput.EMULATED_CONTROLLER_TYPE_VPAD to "GamePad",
-                NativeInput.EMULATED_CONTROLLER_TYPE_PRO to "Pro Controller",
-                NativeInput.EMULATED_CONTROLLER_TYPE_DISABLED to "Desativado"
+                NativeInput.EmulatedControllerType.VPAD to "GamePad",
+                NativeInput.EmulatedControllerType.PRO to "Pro Controller",
+                NativeInput.EmulatedControllerType.DISABLED to "Desativado"
             ),
             selected = controllerType
         ) {
             controllerType = it
             safeRun {
                 NativeInput.setControllerType(0, it)
+                NativeInput.saveInputs()
                 NativeSettings.saveSettings()
             }
-            if (it != NativeInput.EMULATED_CONTROLLER_TYPE_DISABLED && !overlaySettings.isOverlayEnabled) {
-                val changed = manager.overlaySettings
-                changed.isOverlayEnabled = true
-                changed.controllerIndex = 0
-                manager.overlaySettings = changed
-                overlaySettings = manager.overlaySettings
+            if (it != NativeInput.EmulatedControllerType.DISABLED && !overlaySettings.isOverlayEnabled) {
+                overlaySettings = updateOverlaySettings { current ->
+                    current.copy(
+                        isOverlayEnabled = true,
+                        controllerIndex = 0,
+                        alpha = maxOf(current.alpha, 150)
+                    )
+                }
             }
         }
 
@@ -851,15 +860,19 @@ private fun ControlsScreen(onBack: () -> Unit) {
             "Mostra os botões touch durante o jogo",
             overlaySettings.isOverlayEnabled
         ) {
-            val changed = manager.overlaySettings
-            changed.isOverlayEnabled = it
-            changed.controllerIndex = 0
-            if (changed.alpha < 120) changed.alpha = 150
-            manager.overlaySettings = changed
-            overlaySettings = manager.overlaySettings
+            overlaySettings = updateOverlaySettings { current ->
+                current.copy(
+                    isOverlayEnabled = it,
+                    controllerIndex = 0,
+                    alpha = maxOf(current.alpha, 150)
+                )
+            }
             if (it && safeBool { NativeInput.isControllerDisabled(0) }) {
-                safeRun { NativeInput.setControllerType(0, NativeInput.EMULATED_CONTROLLER_TYPE_VPAD) }
-                controllerType = NativeInput.EMULATED_CONTROLLER_TYPE_VPAD
+                safeRun {
+                    NativeInput.setControllerType(0, NativeInput.EmulatedControllerType.VPAD)
+                    NativeInput.saveInputs()
+                }
+                controllerType = NativeInput.EmulatedControllerType.VPAD
             }
         }
 
@@ -869,10 +882,9 @@ private fun ControlsScreen(onBack: () -> Unit) {
             "Feedback tátil nos botões virtuais",
             overlaySettings.isVibrateOnTouchEnabled
         ) {
-            val changed = manager.overlaySettings
-            changed.isVibrateOnTouchEnabled = it
-            manager.overlaySettings = changed
-            overlaySettings = manager.overlaySettings
+            overlaySettings = updateOverlaySettings { current ->
+                current.copy(isVibrateOnTouchEnabled = it)
+            }
         }
 
         SectionLabel("Transparência dos botões")
@@ -880,10 +892,9 @@ private fun ControlsScreen(onBack: () -> Unit) {
             value = alpha,
             onValueChange = { alpha = it },
             onValueChangeFinished = {
-                val changed = manager.overlaySettings
-                changed.alpha = alpha.roundToInt().coerceIn(0, 255)
-                manager.overlaySettings = changed
-                overlaySettings = manager.overlaySettings
+                overlaySettings = updateOverlaySettings { current ->
+                    current.copy(alpha = alpha.roundToInt().coerceIn(0, 255))
+                }
             },
             valueRange = 30f..255f
         )
@@ -1002,7 +1013,7 @@ private fun AboutScreen(onBack: () -> Unit) {
 private fun ScreenScaffold(
     title: String,
     onBack: () -> Unit,
-    content: @Composable Column.() -> Unit
+    content: @Composable ColumnScope.() -> Unit
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -1039,6 +1050,7 @@ private fun ScreenScaffold(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SettingsEntry(
     icon: WIcon,
@@ -1294,7 +1306,7 @@ private fun GameProfileDialog(
         context.getSharedPreferences(GAME_PROFILE_PREFS, Context.MODE_PRIVATE)
     }
     val defaultType = safeInt {
-        if (NativeInput.isControllerDisabled(0)) NativeInput.EMULATED_CONTROLLER_TYPE_VPAD
+        if (NativeInput.isControllerDisabled(0)) NativeInput.EmulatedControllerType.VPAD
         else NativeInput.getControllerType(0)
     }
     var controller by remember {
@@ -1313,8 +1325,8 @@ private fun GameProfileDialog(
                 Text("Controle deste jogo", color = WBlue, fontWeight = FontWeight.Bold)
                 ChoiceButtons(
                     choices = listOf(
-                        NativeInput.EMULATED_CONTROLLER_TYPE_VPAD to "GamePad",
-                        NativeInput.EMULATED_CONTROLLER_TYPE_PRO to "Pro"
+                        NativeInput.EmulatedControllerType.VPAD to "GamePad",
+                        NativeInput.EmulatedControllerType.PRO to "Pro"
                     ),
                     selected = controller
                 ) {
@@ -1325,9 +1337,9 @@ private fun GameProfileDialog(
                 Text("CPU", color = WBlue, fontWeight = FontWeight.Bold)
                 ChoiceButtons(
                     choices = listOf(
-                        NativeGameTitles.CPU_MODE_AUTO to "Auto",
-                        NativeGameTitles.CPU_MODE_SINGLECORERECOMPILER to "1 núcleo",
-                        NativeGameTitles.CPU_MODE_MULTICORERECOMPILER to "Multi"
+                        NativeGameTitles.CPUMode.AUTO to "Auto",
+                        NativeGameTitles.CPUMode.SINGLECORERECOMPILER to "1 núcleo",
+                        NativeGameTitles.CPUMode.MULTICORERECOMPILER to "Multi"
                     ),
                     selected = cpuMode
                 ) {
@@ -1392,17 +1404,19 @@ private fun startGame(context: Context, game: Game) {
     val prefs = context.getSharedPreferences(GAME_PROFILE_PREFS, Context.MODE_PRIVATE)
     val controllerType = prefs.getInt(
         "controller_${game.titleId}",
-        NativeInput.EMULATED_CONTROLLER_TYPE_VPAD
+        NativeInput.EmulatedControllerType.VPAD
     )
 
     safeRun {
         NativeInput.setControllerType(0, controllerType)
-        val manager = InputOverlaySettingsManager(context)
-        val overlay = manager.overlaySettings
-        overlay.controllerIndex = 0
-        if (!overlay.isOverlayEnabled) overlay.isOverlayEnabled = true
-        if (overlay.alpha < 120) overlay.alpha = 150
-        manager.overlaySettings = overlay
+        NativeInput.saveInputs()
+        updateOverlaySettings { current ->
+            current.copy(
+                controllerIndex = 0,
+                isOverlayEnabled = true,
+                alpha = maxOf(current.alpha, 150),
+            )
+        }
         NativeSettings.saveSettings()
     }
 
@@ -1465,6 +1479,31 @@ private fun hasImportedKeys(): Boolean {
         false
     }
 }
+
+private fun getOverlaySettings(): InputOverlaySettings =
+    try {
+        runBlocking {
+            AppSettingsStore.dataStore.data.first().inputOverlaySettings
+        }
+    } catch (_: Throwable) {
+        InputOverlaySettings()
+    }
+
+private fun updateOverlaySettings(
+    transform: (InputOverlaySettings) -> InputOverlaySettings
+): InputOverlaySettings =
+    try {
+        runBlocking {
+            var updated = InputOverlaySettings()
+            AppSettingsStore.dataStore.updateData { appSettings ->
+                updated = transform(appSettings.inputOverlaySettings)
+                appSettings.copy(inputOverlaySettings = updated)
+            }
+            updated
+        }
+    } catch (_: Throwable) {
+        getOverlaySettings()
+    }
 
 private fun safeGamePaths(): List<String> =
     try { NativeSettings.getGamesPaths().toList() } catch (_: Throwable) { emptyList() }

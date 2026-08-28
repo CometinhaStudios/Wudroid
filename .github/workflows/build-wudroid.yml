@@ -85,6 +85,12 @@ jobs:
               strings.write_text(x)
           PY
 
+      - name: Check Wudroid frontend Kotlin
+        working-directory: cemu-engine/src/android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:compileReleaseKotlin --stacktrace --no-daemon
+
       - name: Build release APK
         working-directory: cemu-engine/src/android
         env:
