@@ -1,20 +1,17 @@
-name: Build Wudroid APK
+name: Build Wudroid 0.0.4 Emulation
 
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
-
-permissions:
-  contents: read
+  workflow_dispatch:
 
 jobs:
   build-android:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
 
     steps:
-      - name: Checkout source
+      - name: Checkout Wudroid frontend
         uses: actions/checkout@v5
 
       - name: Set up JDK 17
@@ -26,27 +23,62 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK packages
+      - name: Install native build tools
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "ndk;26.1.10909125" "cmake;3.22.1"
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
 
-      - name: Set up Gradle cache
-        uses: gradle/actions/setup-gradle@v4
+      - name: Fetch Cemu Android engine and dependencies
+        run: |
+          git clone --recursive --branch android-port --single-branch \
+            https://github.com/Producdevity/Cemu-Android.git cemu-engine
+          git -C cemu-engine submodule update --init --recursive
 
-      - name: Build installable debug APK
+      - name: Apply Wudroid frontend and launcher
+        run: |
+          rm -f cemu-engine/src/android/app/src/main/java/info/cemu/cemu/MainActivity.kt
+          cp wudroid-overlay/MainActivity.java \
+            cemu-engine/src/android/app/src/main/java/info/cemu/cemu/MainActivity.java
+          cp wudroid-overlay/AndroidManifest.xml \
+            cemu-engine/src/android/app/src/main/AndroidManifest.xml
+          cp app/src/main/assets/index.html \
+            cemu-engine/src/android/app/src/main/assets/index.html
+          cp -a wudroid-overlay/res/. cemu-engine/src/android/app/src/main/res/
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('cemu-engine/src/android/app/build.gradle.kts')
+          s = p.read_text()
+          s = s.replace('applicationId = "info.cemu.cemu"', 'applicationId = "com.cometinhastudios.wudroid"')
+          p.write_text(s)
+          PY
+
+      - name: Build real Wudroid APK with Cemu core
+        working-directory: cemu-engine/src/android
+        env:
+          EMULATOR_VERSION_MAJOR: '0'
+          EMULATOR_VERSION_MINOR: '0.4'
+          VERSION_CODE: '4'
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleDebug --stacktrace
+          ./gradlew :app:assembleGithubRelease --stacktrace --no-daemon
 
-      - name: Rename APK
+      - name: Collect APK
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Wudroid-0.0.3.apk
+          mkdir -p out
+          APK="$(find cemu-engine/src/android/app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
+          if [ -z "$APK" ]; then
+            echo "APK was not generated"
+            exit 1
+          fi
+          cp "$APK" out/Wudroid-0.0.4-Experimental.apk
+          ls -lh out/Wudroid-0.0.4-Experimental.apk
 
       - name: Upload Wudroid APK
         uses: actions/upload-artifact@v4
         with:
-          name: Wudroid-0.0.3-APK
-          path: Wudroid-0.0.3.apk
+          name: Wudroid-0.0.4-Experimental-APK
+          path: out/Wudroid-0.0.4-Experimental.apk
           if-no-files-found: error
-          retention-days: 30

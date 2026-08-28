@@ -1,10 +1,17 @@
-WUDROID 0.0.3 - INTERFACE RESPONSIVA
+WUDROID 0.0.4 EXPERIMENTAL
 
-1. Crie/abra o repositório Wudroid.
-2. Envie TODO o conteúdo desta pasta para a RAIZ do repositório.
-3. Confirme que .github/workflows/build-wudroid.yml foi enviado.
-4. Abra Actions > Build Wudroid APK.
-5. Quando ficar verde, baixe o artifact Wudroid-0.0.3-APK.
-6. Dentro dele estará Wudroid-0.0.3.apk.
+This ZIP is laid out for the ROOT of the Wudroid repository.
+After extraction, the folder you upload must directly contain:
 
-Esta versão NÃO emula jogos. É apenas o APK da interface.
+.github/
+app/
+branding/
+wudroid-overlay/
+gradle/
+README.md
+THIRD_PARTY_NOTICES.md
+build.gradle
+gradlew
+settings.gradle
+
+GitHub Actions will clone the Cemu Android engine recursively during the build and produce an installable experimental APK.

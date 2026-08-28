@@ -1,15 +1,22 @@
-# Wudroid 0.0.3 — Interface APK
+# Wudroid 0.0.4 Experimental
 
-Preview instalável da interface do Wudroid. Ainda não contém o core do Cemu nem emulação.
+First Wudroid build with a real Wii U emulation engine behind the custom Wudroid frontend.
 
-## 0.0.3
-- Celular em pé: navegação inferior fixa.
-- Celular deitado/tablet: navegação lateral fixa.
-- Biblioteca usa mais colunas em telas largas.
-- Detalhes do jogo viram layout de dois painéis.
-- Configurações ganham painel de nível + grade ampla.
-- Rotação Android liberada.
-- Mantidas as correções de barra de status e ícone da Home da 0.0.2.
+## What changed
+
+- Real Cemu Android core is fetched and compiled by GitHub Actions.
+- Wudroid remains the launcher/frontend.
+- **ABRIR JOGO** opens Android's document picker and sends the selected Wii U file to Cemu's real `EmulationActivity`.
+- ARM64, Vulkan, Android Surface handling, Cemu JIT, filesystem bridge and the existing Android emulation lifecycle come from the Cemu Android port for this bootstrap.
+- Status bar, display cutout and navigation bar insets are applied to the actual WebView viewport, not just CSS/padding.
+- Samsung gesture/navigation area should no longer overlap the Wudroid menu.
+
+## Supported test files
+
+The inherited Cemu Android engine declares support for Wii U launch paths such as WUA, WUD, WUX, WUHB, ELF and RPX. Compatibility is experimental.
 
 ## Build
-O workflow `.github/workflows/build-wudroid.yml` gera o artifact `Wudroid-0.0.3-APK`.
+
+Push the project to the root of the `Wudroid` repository. GitHub Actions runs **Build Wudroid 0.0.4 Emulation** and uploads `Wudroid-0.0.4-Experimental.apk` as an artifact.
+
+The workflow intentionally clones the native engine recursively during CI so the Wudroid repository does not lose Cemu's required Git submodules when transferred as a ZIP.
