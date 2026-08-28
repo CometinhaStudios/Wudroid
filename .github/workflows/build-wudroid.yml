@@ -79,6 +79,9 @@ jobs:
           # Vulkan X v0.1 native renderer policy.
           python3 wudroid-overlay/apply-vulkanx.py
 
+          # Expose the native CPU-per-core / VRAM stats to Kotlin.
+          python3 wudroid-overlay/apply-performance-overlay.py
+
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -89,8 +92,8 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 10', s)
-          s = re.sub(r'versionName\s*=\s*getVersionName\(\)', 'versionName = "0.0.8-vx1-gp980t1"', s)
+          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 11', s)
+          s = re.sub(r'versionName\s*=\s*getVersionName\(\)', 'versionName = "0.0.8-vx1-gp980t1-stats1"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -152,22 +155,22 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Test1-aligned.apk
+            "$APK" out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Test1.apk \
-            out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Test1-aligned.apk
+            --out out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1.apk \
+            out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Test1.apk
+            out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.0.8-VulkanX-v0.1-GP980-Test1-APK
-          path: out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Test1.apk
+          name: Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1-APK
+          path: out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1.apk
           if-no-files-found: error
           compression-level: 0

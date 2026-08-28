@@ -1,25 +1,27 @@
-# Wudroid 0.0.8 — Graphic Packs v980 Test 1
+# Wudroid 0.0.8 — Performance Overlay Stats 1
 
-Primeiro teste de compatibilidade usando um Graphic Pack oficial dentro do Wudroid.
+Correção e expansão do monitor de desempenho durante a emulação.
 
-## O que entra neste patch
+## Corrige
 
-- mantém o **Wudroid Vulkan X v0.1 Test 1** já existente;
-- adiciona o Graphic Pack oficial **New Super Mario Bros. U / New Super Luigi U — Title Screen Crash Fix** do `cemu_graphic_packs` Github980;
-- copia o pack para a pasta de dados do Wudroid **antes** de `NativeGraphicPacks.refreshGraphicPacks()` / `GraphicPack2::LoadAll()`;
-- mantém `rules.txt` e `patch_CrashFix.asm` originais, sem alterações;
-- como o pack oficial possui `default = 1`, ele nasce habilitado quando é instalado pela primeira vez;
-- não baixa ROMs, keys, arquivos de sistema ou conteúdo de jogos.
+O Wudroid já conseguia marcar "Mostrar FPS", mas o Cemu mantém a posição do overlay como `Disabled` por padrão. Portanto o FPS podia estar habilitado e mesmo assim nada ser desenhado na tela.
 
-## Objetivo do teste
+Agora, ao ativar qualquer estatística, o Wudroid liga automaticamente o overlay no canto superior esquerdo se ele estiver desativado. O mesmo reparo é feito ao iniciar um jogo para configurações antigas.
 
-Separar duas hipóteses para o crash de New Super Mario Bros. U:
+## Estatísticas disponíveis
 
-1. crash conhecido na tela de título causado pela checagem de dados Mii/arquivos de sistema;
-2. crash real no backend Vulkan/driver.
+- FPS
+- uso de CPU do processo
+- uso de CPU por núcleo
+- RAM usada pelo processo
+- VRAM reportada pelo renderer, quando o driver/backend disponibilizar o valor
+- draw calls por frame
+- debug do renderer
 
-Se o jogo passar do ponto onde caía, o problema não era o Vulkan X. Se continuar caindo, o próximo passo é registrar o crash nativo e trabalhar em sincronização/driver.
+Também adiciona seleção de posição (quatro cantos) e escala do texto de 75% a 175%.
 
-## Fonte e licença do pack
+## Implementação
 
-Os dois arquivos do workaround foram extraídos do upload/repositório oficial `cemu-project/cemu_graphic_packs`, versão Github980. O repositório declara CC0 1.0 Universal; uma cópia da licença está em `wudroid-overlay/GRAPHIC_PACKS_LICENSE.md`.
+O Cemu já calcula essas estatísticas em `LatteOverlay.cpp`. O patch não cria um contador paralelo: ele corrige a ativação do overlay nativo e expõe ao Kotlin duas chamadas JNI que já existem no Android port (`CPUPerCore` e `VRAM`).
+
+Mantém Vulkan X v0.1 e o Graphic Pack v980 de compatibilidade do NSMBU adicionados nos testes anteriores.

@@ -794,7 +794,28 @@ private fun AdvancedSettingsScreen(onBack: () -> Unit) {
     var asyncShader by remember { mutableStateOf(safeBool { NativeSettings.getAsyncShaderCompile() }) }
     var accurate by remember { mutableStateOf(safeBool { NativeSettings.getAccurateBarriers() }) }
     var fps by remember { mutableStateOf(safeBool { NativeSettings.isOverlayFPSEnabled() }) }
+    var drawCalls by remember { mutableStateOf(safeBool { NativeSettings.isOverlayDrawCallsPerFrameEnabled() }) }
+    var cpuUsage by remember { mutableStateOf(safeBool { NativeSettings.isOverlayCPUUsageEnabled() }) }
+    var cpuPerCore by remember { mutableStateOf(safeBool { NativeSettings.isOverlayCPUPerCoreUsageEnabled() }) }
+    var ramUsage by remember { mutableStateOf(safeBool { NativeSettings.isOverlayRAMUsageEnabled() }) }
+    var vramUsage by remember { mutableStateOf(safeBool { NativeSettings.isOverlayVRAMUsageEnabled() }) }
+    var overlayDebug by remember { mutableStateOf(safeBool { NativeSettings.isOverlayDebugEnabled() }) }
+    var overlayPosition by remember { mutableIntStateOf(safeInt { NativeSettings.getOverlayPosition() }) }
+    var overlayScale by remember {
+        mutableFloatStateOf(safeInt { NativeSettings.getOverlayTextScalePercentage() }.coerceIn(75, 175).toFloat())
+    }
     var vsync by remember { mutableIntStateOf(safeInt { NativeSettings.getVsyncMode() }) }
+
+    fun makeOverlayVisible() {
+        if (overlayPosition == NativeSettings.OVERLAY_SCREEN_POSITION_DISABLED) {
+            overlayPosition = NativeSettings.OVERLAY_SCREEN_POSITION_TOP_LEFT
+            safeRun { NativeSettings.setOverlayPosition(overlayPosition) }
+        }
+    }
+
+    fun saveOverlay() {
+        safeRun { NativeSettings.saveSettings() }
+    }
 
     ScreenScaffold("Configurações avançadas", onBack) {
         SectionLabel("Motor gráfico")
@@ -835,15 +856,126 @@ private fun AdvancedSettingsScreen(onBack: () -> Unit) {
             accurate = it
             safeRun { NativeSettings.setAccurateBarriers(it); NativeSettings.saveSettings() }
         }
+        SectionLabel("Monitor de desempenho")
+        InfoRow(
+            "Overlay de estatísticas",
+            "Mostra dados em tempo real sobre a emulação. Ao ativar qualquer medidor, o Wudroid liga automaticamente o overlay no canto superior esquerdo se ele estiver desativado."
+        )
+        Spacer(Modifier.height(8.dp))
         ToggleEntry(
             WIcon.View,
             "Mostrar FPS",
-            "Exibe o contador de FPS durante a emulação",
+            "Frames por segundo durante a emulação",
             fps
         ) {
             fps = it
-            safeRun { NativeSettings.setOverlayFPSEnabled(it); NativeSettings.saveSettings() }
+            if (it) makeOverlayVisible()
+            safeRun { NativeSettings.setOverlayFPSEnabled(it) }
+            saveOverlay()
         }
+        ToggleEntry(
+            WIcon.Cpu,
+            "Uso de CPU",
+            "Percentual de CPU usado pelo processo do emulador",
+            cpuUsage
+        ) {
+            cpuUsage = it
+            if (it) makeOverlayVisible()
+            safeRun { NativeSettings.setOverlayCPUUsageEnabled(it) }
+            saveOverlay()
+        }
+        ToggleEntry(
+            WIcon.Cpu,
+            "CPU por núcleo",
+            "Mostra a utilização individual dos núcleos do processador",
+            cpuPerCore
+        ) {
+            cpuPerCore = it
+            if (it) makeOverlayVisible()
+            safeRun { NativeSettings.setOverlayCPUPerCoreUsageEnabled(it) }
+            saveOverlay()
+        }
+        ToggleEntry(
+            WIcon.App,
+            "Uso de RAM",
+            "Memória RAM usada pelo processo do Wudroid",
+            ramUsage
+        ) {
+            ramUsage = it
+            if (it) makeOverlayVisible()
+            safeRun { NativeSettings.setOverlayRAMUsageEnabled(it) }
+            saveOverlay()
+        }
+        ToggleEntry(
+            WIcon.Display,
+            "Uso de VRAM",
+            "Memória gráfica reportada pelo backend Vulkan quando disponível",
+            vramUsage
+        ) {
+            vramUsage = it
+            if (it) makeOverlayVisible()
+            safeRun { NativeSettings.setOverlayVRAMUsageEnabled(it) }
+            saveOverlay()
+        }
+        ToggleEntry(
+            WIcon.Sliders,
+            "Draw calls",
+            "Quantidade de chamadas de desenho feitas por frame",
+            drawCalls
+        ) {
+            drawCalls = it
+            if (it) makeOverlayVisible()
+            safeRun { NativeSettings.setOverlayDrawCallsPerFrameEnabled(it) }
+            saveOverlay()
+        }
+        ToggleEntry(
+            WIcon.Info,
+            "Debug do renderer",
+            "Informações extras do backend gráfico para nossos testes",
+            overlayDebug
+        ) {
+            overlayDebug = it
+            if (it) makeOverlayVisible()
+            safeRun { NativeSettings.setOverlayDebugEnabled(it) }
+            saveOverlay()
+        }
+
+        SectionLabel("Posição do monitor")
+        ChoiceButtons(
+            choices = listOf(
+                NativeSettings.OVERLAY_SCREEN_POSITION_TOP_LEFT to "Sup. esq.",
+                NativeSettings.OVERLAY_SCREEN_POSITION_TOP_RIGHT to "Sup. dir."
+            ),
+            selected = overlayPosition
+        ) {
+            overlayPosition = it
+            safeRun { NativeSettings.setOverlayPosition(it); NativeSettings.saveSettings() }
+        }
+        Spacer(Modifier.height(8.dp))
+        ChoiceButtons(
+            choices = listOf(
+                NativeSettings.OVERLAY_SCREEN_POSITION_BOTTOM_LEFT to "Inf. esq.",
+                NativeSettings.OVERLAY_SCREEN_POSITION_BOTTOM_RIGHT to "Inf. dir."
+            ),
+            selected = overlayPosition
+        ) {
+            overlayPosition = it
+            safeRun { NativeSettings.setOverlayPosition(it); NativeSettings.saveSettings() }
+        }
+
+        SectionLabel("Tamanho do texto")
+        Slider(
+            value = overlayScale,
+            onValueChange = { overlayScale = it },
+            onValueChangeFinished = {
+                safeRun {
+                    NativeSettings.setOverlayTextScalePercentage(overlayScale.roundToInt())
+                    NativeSettings.saveSettings()
+                }
+            },
+            valueRange = 75f..175f
+        )
+        Text("${overlayScale.roundToInt()}%", color = WMuted, fontSize = 12.sp)
 
         SectionLabel("VSync")
         ChoiceButtons(
@@ -1438,6 +1570,26 @@ private fun GameProfileDialog(
 
 private fun startGame(context: Context, game: Game) {
     val path = game.path ?: return
+
+    // Old Wudroid builds could enable FPS while leaving Cemu's overlay position
+    // at Disabled, which makes every selected statistic invisible. Repair that
+    // state automatically when launching a game.
+    safeRun {
+        val anyPerformanceStatEnabled =
+            NativeSettings.isOverlayFPSEnabled() ||
+            NativeSettings.isOverlayDrawCallsPerFrameEnabled() ||
+            NativeSettings.isOverlayCPUUsageEnabled() ||
+            NativeSettings.isOverlayCPUPerCoreUsageEnabled() ||
+            NativeSettings.isOverlayRAMUsageEnabled() ||
+            NativeSettings.isOverlayVRAMUsageEnabled() ||
+            NativeSettings.isOverlayDebugEnabled()
+        if (anyPerformanceStatEnabled &&
+            NativeSettings.getOverlayPosition() == NativeSettings.OVERLAY_SCREEN_POSITION_DISABLED
+        ) {
+            NativeSettings.setOverlayPosition(NativeSettings.OVERLAY_SCREEN_POSITION_TOP_LEFT)
+            NativeSettings.saveSettings()
+        }
+    }
 
     if ((path.endsWith(".wud", true) || path.endsWith(".wux", true)) && !hasImportedKeys()) {
         Toast.makeText(
