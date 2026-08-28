@@ -20,7 +20,6 @@ jobs:
     steps:
       - name: Checkout Wudroid
         uses: actions/checkout@v6
-
       - name: Checkout Cemu Android core
         uses: actions/checkout@v6
         with:
@@ -38,7 +37,6 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Install Android native tools
         shell: bash
         run: |
@@ -56,44 +54,46 @@ jobs:
           APP="cemu-engine/src/android/app"
           JAVA="$APP/src/main/java/info/cemu/cemu"
 
-          # Replace only the Android launcher/frontend. Keep the native Cemu core.
           rm -f "$JAVA/MainActivity.kt" "$JAVA/MainActivity.java"
           cp wudroid-overlay/MainActivity.kt "$JAVA/MainActivity.kt"
 
-          # Wudroid Vulkan X Android-side activation and diagnostics.
           mkdir -p "$JAVA/graphics"
           cp wudroid-overlay/WudroidVulkanX.kt "$JAVA/graphics/WudroidVulkanX.kt"
           cp wudroid-overlay/EmulationActivity.kt "$JAVA/emulation/EmulationActivity.kt"
 
-          # Bundled compatibility graphic packs (Test 1: NSMBU/NSLU crash fix).
           mkdir -p "$JAVA/graphicpacks"
-          cp wudroid-overlay/WudroidBundledGraphicPacks.kt             "$JAVA/graphicpacks/WudroidBundledGraphicPacks.kt"
+          cp wudroid-overlay/WudroidBundledGraphicPacks.kt \
+            "$JAVA/graphicpacks/WudroidBundledGraphicPacks.kt"
           mkdir -p "$APP/src/main/assets/wudroid_graphic_packs/NewSuperMarioBrosU/Workarounds/CrashFix"
-          cp wudroid-overlay/graphicpacks/NewSuperMarioBrosU/Workarounds/CrashFix/rules.txt             "$APP/src/main/assets/wudroid_graphic_packs/NewSuperMarioBrosU/Workarounds/CrashFix/rules.txt"
-          cp wudroid-overlay/graphicpacks/NewSuperMarioBrosU/Workarounds/CrashFix/patch_CrashFix.asm             "$APP/src/main/assets/wudroid_graphic_packs/NewSuperMarioBrosU/Workarounds/CrashFix/patch_CrashFix.asm"
+          cp wudroid-overlay/graphicpacks/NewSuperMarioBrosU/Workarounds/CrashFix/rules.txt \
+            "$APP/src/main/assets/wudroid_graphic_packs/NewSuperMarioBrosU/Workarounds/CrashFix/rules.txt"
+          cp wudroid-overlay/graphicpacks/NewSuperMarioBrosU/Workarounds/CrashFix/patch_CrashFix.asm \
+            "$APP/src/main/assets/wudroid_graphic_packs/NewSuperMarioBrosU/Workarounds/CrashFix/patch_CrashFix.asm"
           python3 wudroid-overlay/apply-graphicpacks.py
 
-          # Wudroid identity / launcher artwork.
           cp -a wudroid-overlay/res/. "$APP/src/main/res/"
 
-          # Vulkan X v0.1 native renderer policy.
           python3 wudroid-overlay/apply-vulkanx.py
-
-          # Expose the native CPU-per-core / VRAM stats to Kotlin.
           python3 wudroid-overlay/apply-performance-overlay.py
+
+          # Graphics settings + Wudroid Touch Layout v1.
+          cp wudroid-overlay/WudroidGraphicsSettings.kt "$JAVA/WudroidGraphicsSettings.kt"
+          cp wudroid-overlay/WudroidTouchLayout.kt "$JAVA/WudroidTouchLayout.kt"
+          python3 wudroid-overlay/apply-graphics-touch-ui.py
+          python3 wudroid-overlay/apply-touch-layout.py
 
           python3 - <<'PY'
           from pathlib import Path
           import re
 
           app = Path("cemu-engine/src/android/app")
-
           gradle = app / "build.gradle.kts"
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 11', s)
-          s = re.sub(r'versionName\s*=\s*getVersionName\(\)', 'versionName = "0.0.8-vx1-gp980t1-stats1"', s)
+          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 12', s)
+          s = re.sub(r'versionName\s*=\s*getVersionName\(\)',
+                     'versionName = "0.0.8-vx1-gp980t1-stats1-graphicstouch1"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -103,8 +103,6 @@ jobs:
                          '<string name="app_name">Wudroid</string>', x, flags=re.S)
               strings.write_text(x)
 
-          # Force the launcher/application label. The upstream project has
-          # localized resources that can otherwise still resolve to "Cemu".
           manifest = app / "src/main/AndroidManifest.xml"
           x = manifest.read_text()
           x = x.replace('android:label="@string/app_name"', 'android:label="Wudroid"')
@@ -114,7 +112,6 @@ jobs:
           )
           manifest.write_text(x)
 
-          # Fail the build early if Wudroid identity did not get applied.
           if 'android:label="Wudroid"' not in manifest.read_text():
               raise SystemExit("Wudroid manifest label patch failed")
           if 'applicationId = "com.cometinhastudios.wudroid"' not in gradle.read_text():
@@ -155,22 +152,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1-aligned.apk
-
+            "$APK" out/Wudroid-0.0.8-GraphicsTouch1-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1.apk \
-            out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1-aligned.apk
+            --out out/Wudroid-0.0.8-GraphicsTouch1.apk \
+            out/Wudroid-0.0.8-GraphicsTouch1-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1.apk
+            out/Wudroid-0.0.8-GraphicsTouch1.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1-APK
-          path: out/Wudroid-0.0.8-VulkanX-v0.1-GP980-Stats1.apk
+          name: Wudroid-0.0.8-GraphicsTouch1-APK
+          path: out/Wudroid-0.0.8-GraphicsTouch1.apk
           if-no-files-found: error
           compression-level: 0
