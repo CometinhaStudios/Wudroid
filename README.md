@@ -1,16 +1,25 @@
-# Wudroid Vulkan X v0.1 — Test 1
+# Wudroid 0.0.8 — Graphic Packs v980 Test 1
 
-Primeiro teste nativo do novo caminho gráfico experimental do Wudroid.
+Primeiro teste de compatibilidade usando um Graphic Pack oficial dentro do Wudroid.
 
-## O que muda de verdade
+## O que entra neste patch
 
-- mantém a tradução da GPU Latte do Cemu;
-- quando **Wudroid Vulkan X** está selecionado, a `EmulationActivity` ativa `WUDROID_VULKAN_X=1` antes do renderer iniciar;
-- o `VulkanRenderer` detecta esse modo dentro do código nativo C++;
-- ativa o primeiro perfil próprio: **Pipeline Safe Scheduler v0.1**, que desliga compilação multithread de pipelines no caminho Vulkan X para reduzir concorrência do compilador/driver durante este primeiro teste;
-- mantém o Vulkan padrão totalmente separado: sem a variável, o renderer continua com o comportamento original;
-- cria diagnóstico de sessão e marcador de encerramento inesperado para ajudar a descobrir em qual estágio o teste caiu.
+- mantém o **Wudroid Vulkan X v0.1 Test 1** já existente;
+- adiciona o Graphic Pack oficial **New Super Mario Bros. U / New Super Luigi U — Title Screen Crash Fix** do `cemu_graphic_packs` Github980;
+- copia o pack para a pasta de dados do Wudroid **antes** de `NativeGraphicPacks.refreshGraphicPacks()` / `GraphicPack2::LoadAll()`;
+- mantém `rules.txt` e `patch_CrashFix.asm` originais, sem alterações;
+- como o pack oficial possui `default = 1`, ele nasce habilitado quando é instalado pela primeira vez;
+- não baixa ROMs, keys, arquivos de sistema ou conteúdo de jogos.
 
-## Objetivo
+## Objetivo do teste
 
-Não é ainda um renderer Latte completo reescrito. É o primeiro caminho nativo separado do Vulkan X, feito para validar seleção, comunicação Kotlin -> processo de emulação -> C++ Vulkan e uma política própria de scheduling antes de mexermos em memory manager, texture cache e command scheduler.
+Separar duas hipóteses para o crash de New Super Mario Bros. U:
+
+1. crash conhecido na tela de título causado pela checagem de dados Mii/arquivos de sistema;
+2. crash real no backend Vulkan/driver.
+
+Se o jogo passar do ponto onde caía, o problema não era o Vulkan X. Se continuar caindo, o próximo passo é registrar o crash nativo e trabalhar em sincronização/driver.
+
+## Fonte e licença do pack
+
+Os dois arquivos do workaround foram extraídos do upload/repositório oficial `cemu-project/cemu_graphic_packs`, versão Github980. O repositório declara CC0 1.0 Universal; uma cópia da licença está em `wudroid-overlay/GRAPHIC_PACKS_LICENSE.md`.
