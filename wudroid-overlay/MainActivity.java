@@ -3,20 +3,20 @@ package info.cemu.cemu;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.Insets;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
-import android.widget.Toast;
+
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import info.cemu.cemu.emulation.EmulationActivity;
 
@@ -28,7 +28,18 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        configureSystemBars();
+
+        // Android 15/16 can enforce edge-to-edge. We deliberately handle every
+        // system inset ourselves so the Wudroid UI never sits under Samsung's
+        // status bar, camera cutout or gesture/navigation area.
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
+
+        WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(
+                getWindow(), getWindow().getDecorView());
+        bars.setAppearanceLightStatusBars(true);
+        bars.setAppearanceLightNavigationBars(true);
 
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.WHITE);
@@ -47,70 +58,46 @@ public class MainActivity extends Activity {
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.addJavascriptInterface(new WudroidBridge(), "WudroidNative");
 
-        FrameLayout.LayoutParams webParams = new FrameLayout.LayoutParams(
+        root.addView(webView, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-        );
-        root.addView(webView, webParams);
+                FrameLayout.LayoutParams.MATCH_PARENT));
         setContentView(root);
 
-        // Do not rely on WebView padding for edge-to-edge. Fixed-position HTML can
-        // ignore it. Shrink the actual WebView viewport using margins instead.
-        root.setOnApplyWindowInsetsListener((view, insets) -> {
-            Insets safe = insets.getInsets(
-                    WindowInsets.Type.statusBars()
-                            | WindowInsets.Type.navigationBars()
-                            | WindowInsets.Type.displayCutout()
-            );
-            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) webView.getLayoutParams();
-            lp.leftMargin = safe.left;
-            lp.topMargin = safe.top;
-            lp.rightMargin = safe.right;
-            lp.bottomMargin = safe.bottom;
-            webView.setLayoutParams(lp);
-            return insets;
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, windowInsets) -> {
+            Insets safe = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.statusBars()
+                            | WindowInsetsCompat.Type.navigationBars()
+                            | WindowInsetsCompat.Type.displayCutout());
+            view.setPadding(safe.left, safe.top, safe.right, safe.bottom);
+            return windowInsets;
         });
+        ViewCompat.requestApplyInsets(root);
 
         webView.loadUrl("file:///android_asset/index.html");
-        root.requestApplyInsets();
-    }
-
-    private void configureSystemBars() {
-        Window window = getWindow();
-        window.setStatusBarColor(Color.TRANSPARENT);
-        window.setNavigationBarColor(Color.WHITE);
-        window.setNavigationBarDividerColor(Color.rgb(225, 236, 242));
-        WindowInsetsController controller = window.getInsetsController();
-        if (controller != null) {
-            controller.setSystemBarsAppearance(
-                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                            | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
-                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                            | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            );
-        }
     }
 
     private void openGamePicker() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(intent, REQUEST_OPEN_GAME);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != REQUEST_OPEN_GAME || resultCode != RESULT_OK || data == null || data.getData() == null) {
+        if (requestCode != REQUEST_OPEN_GAME || resultCode != RESULT_OK
+                || data == null || data.getData() == null) {
             return;
         }
 
         Uri uri = data.getData();
         try {
-            getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getContentResolver().takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
         } catch (SecurityException ignored) {
-            // Some providers don't expose persistable grants; the one-shot grant is enough.
         }
 
         Intent emulationIntent = new Intent(this, EmulationActivity.class);
@@ -132,7 +119,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String version() {
-            return "0.0.4";
+            return "0.0.5";
         }
     }
 }
