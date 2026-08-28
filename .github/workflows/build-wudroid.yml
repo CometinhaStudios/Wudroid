@@ -49,34 +49,18 @@ jobs:
             "ndk;26.1.10909125" \
             "cmake;3.22.1"
 
-      - name: Apply Wudroid controls and settings integration
+      - name: Apply Wudroid independent frontend
         shell: bash
         run: |
           set -euo pipefail
           APP="cemu-engine/src/android/app"
           JAVA="$APP/src/main/java/info/cemu/cemu"
 
-          # Preserve the original Android frontend as a management activity.
-          # It gives Wudroid a working native game library, title actions,
-          # graphic packs and per-game Cemu profiles without replacing our UI.
-          cp "$JAVA/MainActivity.kt" "$JAVA/WudroidManagerActivity.kt"
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("cemu-engine/src/android/app/src/main/java/info/cemu/cemu/WudroidManagerActivity.kt")
-          s = p.read_text()
-          s = s.replace("class MainActivity : AppCompatActivity()", "class WudroidManagerActivity : AppCompatActivity()")
-          p.write_text(s)
-          PY
+          # Replace only the Android launcher/frontend. Keep the native Cemu core.
+          rm -f "$JAVA/MainActivity.kt" "$JAVA/MainActivity.java"
+          cp wudroid-overlay/MainActivity.kt "$JAVA/MainActivity.kt"
 
-          rm -f "$JAVA/MainActivity.kt"
-          cp wudroid-overlay/MainActivity.java "$JAVA/MainActivity.java"
-          cp wudroid-overlay/WudroidSettingsActivity.kt "$JAVA/WudroidSettingsActivity.kt"
-          cp wudroid-overlay/WudroidGamePathsActivity.kt "$JAVA/WudroidGamePathsActivity.kt"
-          cp wudroid-overlay/WudroidTouchSettingsActivity.kt "$JAVA/WudroidTouchSettingsActivity.kt"
-          cp wudroid-overlay/WudroidBootstrap.kt "$JAVA/WudroidBootstrap.kt"
-
-          mkdir -p "$APP/src/main/assets"
-          cp app/src/main/assets/index.html "$APP/src/main/assets/index.html"
+          # Wudroid identity / launcher artwork.
           cp -a wudroid-overlay/res/. "$APP/src/main/res/"
 
           python3 - <<'PY'
@@ -89,8 +73,8 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 7', s)
-          s = re.sub(r'versionName\s*=\s*getVersionName\(\)', 'versionName = "0.0.7"', s)
+          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 8', s)
+          s = re.sub(r'versionName\s*=\s*getVersionName\(\)', 'versionName = "0.0.8"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -99,31 +83,6 @@ jobs:
               x = re.sub(r'<string name="app_name">.*?</string>',
                          '<string name="app_name">Wudroid</string>', x, flags=re.S)
               strings.write_text(x)
-
-          # Fresh installs should have touch controls visible immediately.
-          settings = app / "src/main/java/info/cemu/cemu/common/settings/Settings.kt"
-          if settings.exists():
-              x = settings.read_text()
-              x = x.replace(
-                  "val isOverlayEnabled: Boolean = false",
-                  "val isOverlayEnabled: Boolean = true"
-              )
-              settings.write_text(x)
-
-          # Add Wudroid-only native management/settings activities while
-          # preserving every upstream manifest declaration.
-          manifest = app / "src/main/AndroidManifest.xml"
-          x = manifest.read_text()
-          marker = "info.cemu.cemu.WudroidSettingsActivity"
-          if marker not in x:
-              extra = """
-              <activity android:name="info.cemu.cemu.WudroidSettingsActivity" android:exported="false" />
-              <activity android:name="info.cemu.cemu.WudroidGamePathsActivity" android:exported="false" />
-              <activity android:name="info.cemu.cemu.WudroidTouchSettingsActivity" android:exported="false" />
-              <activity android:name="info.cemu.cemu.WudroidManagerActivity" android:exported="false" />
-              """
-              x = x.replace("</application>", extra + "\n    </application>")
-              manifest.write_text(x)
           PY
 
       - name: Build release APK
@@ -154,22 +113,22 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.0.7-aligned.apk
+            "$APK" out/Wudroid-0.0.8-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.0.7.apk \
-            out/Wudroid-0.0.7-aligned.apk
+            --out out/Wudroid-0.0.8.apk \
+            out/Wudroid-0.0.8-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.0.7.apk
+            out/Wudroid-0.0.8.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.0.7-APK
-          path: out/Wudroid-0.0.7.apk
+          name: Wudroid-0.0.8-APK
+          path: out/Wudroid-0.0.8.apk
           if-no-files-found: error
           compression-level: 0

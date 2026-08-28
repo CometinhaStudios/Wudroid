@@ -1,0 +1,10 @@
+APLICAR SOBRE O REPOSITÓRIO ATUAL
+
+1) Extraia este ZIP.
+2) Copie o conteúdo da pasta Wudroid-0.0.8-SwitchUI-Keys por cima do projeto local.
+3) No Termux, dentro do projeto:
+   git add -A
+   git commit -m "Wudroid 0.0.8 - Independent frontend and keys setup"
+   git push
+
+O GitHub Actions gera Wudroid-0.0.8.apk.
