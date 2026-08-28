@@ -7,13 +7,13 @@ import info.cemu.cemu.common.settings.OverlayInputConfig
 import kotlinx.coroutines.runBlocking
 
 private const val TOUCH_LAYOUT_PREFS = "wudroid_touch_layout"
-private const val TOUCH_LAYOUT_V1_APPLIED = "layout_v1_applied"
+private const val TOUCH_LAYOUT_V11_APPLIED = "layout_v1_1_applied"
 
 fun applyWudroidTouchLayoutV1(context: Context) {
     val prefs = context.getSharedPreferences(TOUCH_LAYOUT_PREFS, Context.MODE_PRIVATE)
-    if (prefs.getBoolean(TOUCH_LAYOUT_V1_APPLIED, false)) return
+    if (prefs.getBoolean(TOUCH_LAYOUT_V11_APPLIED, false)) return
     resetWudroidTouchLayout()
-    prefs.edit().putBoolean(TOUCH_LAYOUT_V1_APPLIED, true).apply()
+    prefs.edit().putBoolean(TOUCH_LAYOUT_V11_APPLIED, true).apply()
 }
 
 fun resetWudroidTouchLayout(): InputOverlaySettings =
@@ -25,7 +25,7 @@ fun resetWudroidTouchLayout(): InputOverlaySettings =
                 result = current.copy(
                     isOverlayEnabled = true,
                     controllerIndex = 0,
-                    alpha = 112,
+                    alpha = 128,
                     inputOverlayRectMap = emptyMap(),
                     inputVisibilityMap = current.inputVisibilityMap +
                         mapOf(
@@ -38,9 +38,5 @@ fun resetWudroidTouchLayout(): InputOverlaySettings =
             result
         }
     } catch (_: Throwable) {
-        InputOverlaySettings(
-            isOverlayEnabled = true,
-            controllerIndex = 0,
-            alpha = 112
-        )
+        InputOverlaySettings(isOverlayEnabled = true, controllerIndex = 0, alpha = 128)
     }
