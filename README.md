@@ -1,18 +1,10 @@
-# Wudroid 0.0.8 — BuildFix 2
+# Wudroid 0.0.8 — Graphics Engine Selector
 
-Corrige dois bugs observados no APK funcional:
+Adiciona em **Configurações avançadas > Motor gráfico**:
 
-1. **Nome no launcher**
-   - força `Wudroid` diretamente no `AndroidManifest.xml`;
-   - mantém `applicationId = com.cometinhastudios.wudroid`;
-   - evita que traduções/recursos herdados mostrem `Cemu`.
+- **Vulkan padrão** — backend Vulkan atual do Cemu Android (padrão/estável).
+- **Wudroid Vulkan X** — opção experimental/protótipo.
 
-2. **Crash ao adicionar pasta**
-   - usa `DocumentFile.fromTreeUri(...)`, como o frontend Android upstream;
-   - persiste a permissão SAF;
-   - não chama `NativeSettings.saveSettings()` nem
-     `NativeGameTitles.reloadGameTitles()` dentro do callback do seletor;
-   - a biblioteca recarrega depois, pelo `GamesListViewModel`, após o seletor fechar;
-   - trata pasta duplicada e erro de acesso sem fechar o app.
+A escolha fica persistida em `wudroid_graphics` e também é enviada para a `EmulationActivity` pelo extra `wudroid.graphics_engine`, criando o gancho para conectar o futuro backend experimental.
 
-A emulação/core não foi alterada.
+> Importante: nesta etapa o Vulkan X ainda não substitui o renderer nativo. Ele prepara a seleção e o hand-off sem fingir que um segundo renderer já existe.

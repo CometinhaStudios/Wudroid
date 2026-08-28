@@ -120,6 +120,10 @@ private val WRed = Color(0xFFFF5A63)
 private const val SETUP_PREFS = "wudroid_setup"
 private const val SETUP_DONE = "setup_done_008"
 private const val GAME_PROFILE_PREFS = "wudroid_game_profiles"
+private const val GRAPHICS_PREFS = "wudroid_graphics"
+private const val GRAPHICS_ENGINE_KEY = "graphics_engine"
+private const val GRAPHICS_ENGINE_CEMU_VULKAN = 0
+private const val GRAPHICS_ENGINE_WUDROID_VULKAN_X = 1
 
 private enum class Screen {
     Library, Settings, Advanced, Controls, GameFolders, SystemInfo, About
@@ -770,12 +774,41 @@ private fun SettingsScreen(
 
 @Composable
 private fun AdvancedSettingsScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val graphicsPrefs = remember {
+        context.getSharedPreferences(GRAPHICS_PREFS, Context.MODE_PRIVATE)
+    }
+    var graphicsEngine by remember {
+        mutableIntStateOf(
+            graphicsPrefs.getInt(GRAPHICS_ENGINE_KEY, GRAPHICS_ENGINE_CEMU_VULKAN)
+        )
+    }
     var asyncShader by remember { mutableStateOf(safeBool { NativeSettings.getAsyncShaderCompile() }) }
     var accurate by remember { mutableStateOf(safeBool { NativeSettings.getAccurateBarriers() }) }
     var fps by remember { mutableStateOf(safeBool { NativeSettings.isOverlayFPSEnabled() }) }
     var vsync by remember { mutableIntStateOf(safeInt { NativeSettings.getVsyncMode() }) }
 
     ScreenScaffold("Configurações avançadas", onBack) {
+        SectionLabel("Motor gráfico")
+        ChoiceButtons(
+            choices = listOf(
+                GRAPHICS_ENGINE_CEMU_VULKAN to "Vulkan padrão",
+                GRAPHICS_ENGINE_WUDROID_VULKAN_X to "Vulkan X"
+            ),
+            selected = graphicsEngine
+        ) { engine ->
+            graphicsEngine = engine
+            graphicsPrefs.edit().putInt(GRAPHICS_ENGINE_KEY, engine).apply()
+        }
+        Spacer(Modifier.height(8.dp))
+        InfoRow(
+            "${if (graphicsEngine == GRAPHICS_ENGINE_CEMU_VULKAN) "Vulkan padrão" else "Wudroid Vulkan X"}",
+            if (graphicsEngine == GRAPHICS_ENGINE_CEMU_VULKAN)
+                "Backend Vulkan atual do Cemu Android. É a opção estável e continua sendo o padrão."
+            else
+                "Protótipo experimental do Wudroid. O seletor e o gancho já ficam preparados; nesta versão ele ainda usa o backend Vulkan atual enquanto o novo caminho gráfico é desenvolvido."
+        )
+        Spacer(Modifier.height(12.dp))
         ToggleEntry(
             WIcon.Cpu,
             "Compilação assíncrona de shaders",
@@ -1426,9 +1459,14 @@ private fun startGame(context: Context, game: Game) {
         NativeSettings.saveSettings()
     }
 
+    val graphicsEngine = context
+        .getSharedPreferences(GRAPHICS_PREFS, Context.MODE_PRIVATE)
+        .getInt(GRAPHICS_ENGINE_KEY, GRAPHICS_ENGINE_CEMU_VULKAN)
+
     Intent(context, EmulationActivity::class.java).apply {
         action = Intent.ACTION_VIEW
         putExtra(EmulationActivity.EXTRA_LAUNCH_PATH, path)
+        putExtra("wudroid.graphics_engine", graphicsEngine)
         if (path.startsWith("content://")) {
             val uri = Uri.parse(path)
             data = uri
