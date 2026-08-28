@@ -93,6 +93,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.documentfile.provider.DocumentFile
 import info.cemu.cemu.emulation.EmulationActivity
+import info.cemu.cemu.graphics.WudroidVulkanX
 import info.cemu.cemu.games.list.GamesListViewModel
 import info.cemu.cemu.common.settings.AppSettingsStore
 import info.cemu.cemu.common.settings.InputOverlaySettings
@@ -139,6 +140,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (WudroidVulkanX.recoverPreviousSession(this)) {
+            Toast.makeText(
+                this,
+                "A sessão anterior do Vulkan X terminou de forma inesperada. O diagnóstico foi preservado.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
 
         // First real Wudroid controller bootstrap:
         // if Cemu has Controller 1 disabled, configure it as Wii U GamePad.
@@ -806,7 +814,7 @@ private fun AdvancedSettingsScreen(onBack: () -> Unit) {
             if (graphicsEngine == GRAPHICS_ENGINE_CEMU_VULKAN)
                 "Backend Vulkan atual do Cemu Android. É a opção estável e continua sendo o padrão."
             else
-                "Protótipo experimental do Wudroid. O seletor e o gancho já ficam preparados; nesta versão ele ainda usa o backend Vulkan atual enquanto o novo caminho gráfico é desenvolvido."
+                "Vulkan X v0.1: usa a tradução Latte do Cemu, mas ativa um caminho nativo experimental no renderer Vulkan com scheduler de pipelines conservador e diagnóstico de sessão. Ainda é um primeiro teste."
         )
         Spacer(Modifier.height(12.dp))
         ToggleEntry(
