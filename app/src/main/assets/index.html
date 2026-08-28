@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wudroid</title>
+<style>
+:root{--blue:#0aaef0;--blue2:#45c9fa;--ink:#26384a;--muted:#758797;--line:#dce9f0;--card:#fff;--bg:#f5fbfe;--shadow:0 8px 24px rgba(40,105,145,.10)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:linear-gradient(180deg,#f8fcff,#eef8fd);min-height:100vh}.app{max-width:760px;margin:auto;min-height:100vh;background:rgba(255,255,255,.72)}
+.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(255,255,255,.92);backdrop-filter:blur(18px);border-bottom:1px solid #e6f0f5}.brand{display:flex;align-items:center;gap:10px;flex:1}.mark{width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,#19c7fb,#028be4);display:grid;place-items:center;box-shadow:inset 0 1px #fff8,0 5px 14px #0baef033}.mark svg{width:27px}.brand b{font-size:20px}.brand small{display:block;color:var(--muted);margin-top:1px}.topbtn{width:40px;height:40px;border:1px solid var(--line);border-radius:13px;background:#fff;display:grid;place-items:center;box-shadow:0 3px 10px #527b9414}.topbtn svg{width:21px;height:21px;stroke:#2f526a}
+.hero{padding:20px 16px 8px}.welcome{background:linear-gradient(135deg,#fff,#eefaff);border:1px solid #d8edf7;border-radius:24px;padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden}.welcome:after{content:'';position:absolute;width:160px;height:160px;border-radius:50%;background:linear-gradient(135deg,#6bdcff44,#19b7f122);right:-45px;top:-60px}.welcome h1{font-size:25px;margin:0 0 6px}.welcome p{margin:0;color:var(--muted);max-width:75%;font-size:14px;line-height:1.45}.add{margin-top:14px;border:0;border-radius:14px;padding:11px 15px;background:linear-gradient(135deg,#0caef0,#38c9fa);color:white;font-weight:800;box-shadow:0 6px 15px #0aaef033}
+.section{padding:14px 16px}.sectionhead{display:flex;align-items:end;justify-content:space-between;margin-bottom:12px}.sectionhead h2{font-size:18px;margin:0}.sectionhead span{font-size:12px;color:var(--blue);font-weight:700}.games{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.game{background:#fff;border:1px solid #e0edf4;border-radius:20px;overflow:hidden;box-shadow:var(--shadow);transition:.15s}.game:active{transform:scale(.98)}.cover{height:140px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}.cover.c1{background:linear-gradient(145deg,#78d5ff,#0b74cc)}.cover.c2{background:linear-gradient(145deg,#ffe274,#f59a1b)}.cover.c3{background:linear-gradient(145deg,#9ceaa9,#2d9a62)}.cover.c4{background:linear-gradient(145deg,#d3b4ff,#7753d7)}.cover .disc{width:72px;height:72px;border-radius:50%;background:#fff8;border:8px solid #fff4;box-shadow:0 10px 25px #20415a2c;display:grid;place-items:center}.cover svg{width:38px;height:38px}.gameinfo{padding:11px 12px 13px}.gameinfo b{display:block;font-size:14px}.gameinfo small{color:var(--muted);display:block;margin-top:3px}
+.tabs{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(100%,760px);display:grid;grid-template-columns:repeat(4,1fr);background:rgba(255,255,255,.97);backdrop-filter:blur(18px);border-top:1px solid #dceaf1;padding:8px 7px 9px;z-index:50;box-shadow:0 -5px 20px rgba(40,105,145,.07)}.tab{border:0;background:transparent;border-radius:15px;padding:7px 2px 5px;color:#7a8c99;font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px}.tab svg{width:23px;height:23px;stroke:currentColor}.tab.active{color:var(--blue);background:#ebf9ff}
+.screen{display:none;padding-bottom:96px}.screen.active{display:block}.title{padding:20px 16px 4px}.title h1{margin:0;font-size:26px}.title p{margin:4px 0;color:var(--muted);font-size:13px}.settingsgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:14px 16px}.settingsCard{border:1px solid #dcebf3;background:#fff;border-radius:20px;padding:17px 14px;text-align:left;box-shadow:var(--shadow)}.settingsCard .ico{width:48px;height:48px;border-radius:16px;background:linear-gradient(145deg,#effbff,#dff5ff);display:grid;place-items:center;margin-bottom:12px}.settingsCard svg{width:28px;height:28px;stroke:#0aaef0}.settingsCard b{font-size:15px}.settingsCard small{display:block;color:var(--muted);line-height:1.35;margin-top:5px}.mode{margin:0 16px 14px;background:#fff;border:1px solid #dcebf3;border-radius:20px;padding:14px;box-shadow:var(--shadow)}.modehead{display:flex;justify-content:space-between;align-items:center}.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.chip{padding:10px 5px;border-radius:13px;text-align:center;border:1px solid #d8e7ef;font-size:12px;font-weight:800;background:#f9fcfe}.chip.sel{background:linear-gradient(135deg,#08aef1,#52d1fb);color:#fff;border-color:transparent}
+.detailHero{margin:14px 16px;border-radius:26px;padding:20px;background:linear-gradient(140deg,#0a86d7,#53d7ff);color:white;box-shadow:0 12px 30px #118ec333}.detailHero h1{margin:0;font-size:24px}.detailHero p{opacity:.85;margin:4px 0 18px}.play{width:100%;border:0;background:#fff;color:#078bcf;border-radius:15px;padding:13px;font-weight:900}.actions{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:0 16px}.action{background:#fff;border:1px solid #dceaf2;border-radius:18px;padding:15px;display:flex;align-items:center;gap:11px;box-shadow:var(--shadow);font-size:13px;font-weight:800}.action .mini{width:38px;height:38px;border-radius:13px;background:#e9f9ff;display:grid;place-items:center}.action svg{width:21px;height:21px;stroke:#0aaef0}
+.note{margin:14px 16px;padding:13px 14px;border-radius:16px;background:#eef9ff;border:1px solid #ccecff;color:#517082;font-size:12px;line-height:1.5}.footerSpace{height:8px}
+
+
+/* ===== Wudroid responsive layouts ===== */
+@media (min-width:720px){
+  body{background:linear-gradient(135deg,#f7fcff,#eef8fd)}
+  .app{max-width:none;margin:0;padding-left:82px;min-height:100vh;background:rgba(255,255,255,.70)}
+  .top{padding:12px 22px;min-height:70px}
+  .brand b{font-size:22px}.brand small{font-size:13px}
+  .mark{width:46px;height:46px;border-radius:15px}
+  .topbtn{width:44px;height:44px}
+
+  /* Bottom navigation becomes a Wii-U-like side rail */
+  .tabs{left:0;top:0;bottom:0;transform:none;width:82px;height:100vh;grid-template-columns:1fr;grid-template-rows:repeat(4,76px);align-content:center;gap:8px;padding:12px 8px;border-top:0;border-right:1px solid #dceaf1;box-shadow:5px 0 20px rgba(40,105,145,.07)}
+  .tab{padding:10px 3px;border-radius:18px;font-size:10px;gap:5px;justify-content:center}
+  .tab svg{width:26px;height:26px}
+  .screen{padding-bottom:24px;min-height:calc(100vh - 70px)}
+
+  /* Library: two-panel landscape layout */
+  #home.screen.active{display:grid;grid-template-columns:minmax(260px,32%) 1fr;gap:18px;padding:20px 22px;align-items:start}
+  #home .hero,#home .section{padding:0}
+  #home .welcome{min-height:305px;display:flex;flex-direction:column;justify-content:center;padding:24px}
+  #home .welcome h1{font-size:29px}
+  #home .welcome p{font-size:15px;max-width:90%}
+  #home .add{align-self:flex-start;margin-top:20px}
+  #home .sectionhead{margin-top:4px}
+  .games{grid-template-columns:repeat(2,minmax(170px,1fr));gap:16px}
+  .cover{height:155px}
+
+  /* Game details: hero on the left, actions on the right */
+  #game.screen.active{display:grid;grid-template-columns:minmax(280px,40%) 1fr;gap:18px;padding:20px 22px;align-items:start}
+  #game .detailHero{margin:0;min-height:305px;display:flex;flex-direction:column;justify-content:center;padding:26px}
+  #game .detailHero h1{font-size:30px}
+  #game .play{margin-top:auto}
+  #game .actions{padding:0;grid-template-columns:repeat(2,minmax(180px,1fr));align-content:start}
+  #game .action{min-height:92px;font-size:15px}
+  #game .note{grid-column:1/-1;margin:0;font-size:13px}
+
+  /* Settings: category panel + roomy cards */
+  #settings.screen.active{display:grid;grid-template-columns:260px 1fr;grid-template-rows:auto 1fr;gap:16px 18px;padding:18px 22px;align-items:start}
+  #settings .title{grid-column:1/-1;padding:0 0 2px}
+  #settings .title h1{font-size:30px}
+  #settings .mode{margin:0;position:sticky;top:88px}
+  #settings .chips{grid-template-columns:1fr;gap:9px}
+  #settings .chip{padding:12px}
+  #settings .settingsgrid{padding:0;grid-template-columns:repeat(2,minmax(190px,1fr));gap:14px}
+  .settingsCard{min-height:160px;padding:18px}
+
+  /* About stays compact and centered */
+  #about.screen.active{display:grid;grid-template-columns:minmax(280px,720px);justify-content:center;padding:28px 22px}
+  #about .title{padding:0 0 6px}
+  #about .note{margin:0;font-size:15px}
+}
+
+@media (min-width:1080px){
+  .app{padding-left:92px}
+  .tabs{width:92px}
+  #home.screen.active{grid-template-columns:minmax(300px,28%) 1fr;gap:24px;padding:26px 30px}
+  .games{grid-template-columns:repeat(3,minmax(180px,1fr));gap:18px}
+  .cover{height:175px}
+  #game.screen.active{grid-template-columns:minmax(330px,36%) 1fr;gap:24px;padding:26px 30px}
+  #game .actions{grid-template-columns:repeat(2,minmax(220px,1fr));gap:16px}
+  #settings.screen.active{grid-template-columns:285px 1fr;padding:24px 30px;gap:18px 24px}
+  #settings .settingsgrid{grid-template-columns:repeat(3,minmax(190px,1fr));gap:16px}
+}
+
+@media (min-width:1380px){
+  .games{grid-template-columns:repeat(4,minmax(180px,1fr))}
+  #settings .settingsgrid{grid-template-columns:repeat(4,minmax(185px,1fr))}
+}
+
+/* Short landscape phones: keep controls compact so content remains usable. */
+@media (orientation:landscape) and (max-height:520px) and (min-width:720px){
+  .top{min-height:58px;padding:7px 16px}.mark{width:38px;height:38px;border-radius:12px}.brand b{font-size:18px}.brand small{font-size:11px}.topbtn{width:38px;height:38px}
+  .tabs{grid-template-rows:repeat(4,62px);width:74px}.app{padding-left:74px}
+  #home.screen.active,#game.screen.active,#settings.screen.active{padding-top:12px}
+  #home .welcome,#game .detailHero{min-height:230px}
+  .cover{height:125px}
+  .settingsCard{min-height:130px}
+}
+
+</style>
+</head>
+<body><div class="app">
+<div class="top"><div class="brand"><div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M3 5l3 14 6-10 6 10 3-14"/><circle cx="12" cy="15" r="1.3" fill="white" stroke="none"/></svg></div><div><b>Wudroid</b><small>Wii U emulator for Android</small></div></div><button class="topbtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg></button><button class="topbtn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button></div>
+
+<section id="home" class="screen active"><div class="hero"><div class="welcome"><h1>Sua biblioteca Wii U</h1><p>Este é só o preview visual do Wudroid. Nenhuma emulação está ativa ainda.</p><button class="add">+ Adicionar pasta</button></div></div><div class="section"><div class="sectionhead"><h2>Biblioteca</h2><span>Visualização em grade</span></div><div class="games">
+<div class="game" onclick="show('game')"><div class="cover c1"><div class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M7 10h10l2 7a2 2 0 0 1-3 2l-2-2h-4l-2 2a2 2 0 0 1-3-2z"/><path d="M8 13h3M9.5 11.5v3M15.5 13h.01M17 14.5h.01"/></svg></div></div><div class="gameinfo"><b>Jogo de demonstração</b><small>Wii U • Favorito</small></div></div>
+<div class="game"><div class="cover c2"><div class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></div></div><div class="gameinfo"><b>Recentes</b><small>Últimos jogos usados</small></div></div>
+<div class="game"><div class="cover c3"><div class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M4 6h6l2 2h8v10H4z"/></svg></div></div><div class="gameinfo"><b>Instalados</b><small>Conteúdo local</small></div></div>
+<div class="game"><div class="cover c4"><div class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 3 9.5 9H3l5 4-2 7 6-4 6 4-2-7 5-4h-6.5z"/></svg></div></div><div class="gameinfo"><b>Favoritos</b><small>Acesso rápido</small></div></div>
+</div></div></section>
+
+<section id="game" class="screen"><div class="detailHero"><h1>Jogo de demonstração</h1><p>Wii U • Preview de interface</p><button class="play">▶ &nbsp; JOGAR</button></div><div class="actions">
+<div class="action"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5L9 6.1a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3.1h5l.5-3.1a8 8 0 0 0 1.7-1l2.4 1 2-3.4L19 13a7 7 0 0 0 0-1z"/></svg></span>Config. do jogo</div>
+<div class="action"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m12 3 4 4-4 4-4-4zM8 13l4 4 4-4M8 17l4 4 4-4"/></svg></span>Graphic Packs</div>
+<div class="action"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 4h14v16H5z"/><path d="M8 4v6h8V4M8 16h8"/></svg></span>Saves</div>
+<div class="action"><span class="mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg></span>Informações</div>
+</div><div class="note">Preview apenas. Os botões mostram como a interface vai ficar; eles ainda não iniciam jogos nem alteram configurações.</div></section>
+
+<section id="settings" class="screen"><div class="title"><h1>Configurações</h1><p>Cards grandes, ícones próprios e explicações claras.</p></div><div class="mode"><div class="modehead"><b>Nível de configuração</b><small style="color:var(--muted)">Recomendado: Básico</small></div><div class="chips"><div class="chip sel">Básico</div><div class="chip">Avançado</div><div class="chip">Developer</div></div></div><div class="settingsgrid">
+<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div><b>Gráficos</b><small>Resolução, Vulkan, filtros, shaders e sincronização.</small></div>
+<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M7 10h10l2 7a2 2 0 0 1-3 2l-2-2h-4l-2 2a2 2 0 0 1-3-2z"/><path d="M8 13h3M9.5 11.5v3M15.5 13h.01M17 14.5h.01"/></svg></div><b>Controles</b><small>GamePad, Pro Controller, touch e perfis.</small></div>
+<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 10v4h4l5 4V6L9 10z"/><path d="M17 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg></div><b>Áudio</b><small>Volume, saída da TV, GamePad e latência.</small></div>
+<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></div><b>Sistema</b><small>CPU, memória, arquivos e comportamento do emulador.</small></div>
+<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 15a8 8 0 1 1 16 0"/><path d="m12 15 4-5"/></svg></div><b>Desempenho</b><small>Perfis automáticos, JIT e opções de velocidade.</small></div>
+<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg></div><b>Overlay</b><small>FPS, CPU, GPU, VRAM e estatísticas durante o jogo.</small></div>
+<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m12 3 4 4-4 4-4-4zM8 13l4 4 4-4M8 17l4 4 4-4"/></svg></div><b>Drivers</b><small>Driver Vulkan do sistema e drivers customizados.</small></div>
+<div class="settingsCard"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div><b>Online</b><small>Contas, rede e serviços compatíveis.</small></div>
+</div></section>
+
+<section id="about" class="screen"><div class="title"><h1>Wudroid</h1><p>0.0.3 • UI Preview</p></div><div class="note" style="font-size:14px">Protótipo visual do frontend. Esta versão não contém o core do Cemu, não abre jogos e não faz emulação. Ela existe apenas para testar a aparência, navegação e identidade do aplicativo.</div></section>
+
+<nav class="tabs"><button class="tab active" data-target="home" onclick="show('home',this)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 10.8 12 3.8l9 7V20a1 1 0 0 1-1 1h-5.2v-6.2H9.2V21H4a1 1 0 0 1-1-1z"/><path d="M9.2 21v-6.2h5.6V21"/></svg>Início</button><button class="tab" data-target="game" onclick="show('game',this)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M7 10h10l2 7a2 2 0 0 1-3 2l-2-2h-4l-2 2a2 2 0 0 1-3-2z"/><path d="M8 13h3M9.5 11.5v3M15.5 13h.01M17 14.5h.01"/></svg>Jogo</button><button class="tab" data-target="settings" onclick="show('settings',this)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5L9 6.1a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3.1h5l.5-3.1a8 8 0 0 0 1.7-1l2.4 1 2-3.4L19 13a7 7 0 0 0 0-1z"/></svg>Config.</button><button class="tab" data-target="about" onclick="show('about',this)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>Sobre</button></nav>
+</div>
+<script>function show(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(btn){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active')}else{document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.target===id))}scrollTo({top:0,behavior:'smooth'})}</script>
+</body></html>

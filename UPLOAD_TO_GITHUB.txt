@@ -1,0 +1,10 @@
+WUDROID 0.0.3 - INTERFACE RESPONSIVA
+
+1. Crie/abra o repositório Wudroid.
+2. Envie TODO o conteúdo desta pasta para a RAIZ do repositório.
+3. Confirme que .github/workflows/build-wudroid.yml foi enviado.
+4. Abra Actions > Build Wudroid APK.
+5. Quando ficar verde, baixe o artifact Wudroid-0.0.3-APK.
+6. Dentro dele estará Wudroid-0.0.3.apk.
+
+Esta versão NÃO emula jogos. É apenas o APK da interface.
