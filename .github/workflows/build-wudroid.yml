@@ -83,6 +83,23 @@ jobs:
               x = re.sub(r'<string name="app_name">.*?</string>',
                          '<string name="app_name">Wudroid</string>', x, flags=re.S)
               strings.write_text(x)
+
+          # Force the launcher/application label. The upstream project has
+          # localized resources that can otherwise still resolve to "Cemu".
+          manifest = app / "src/main/AndroidManifest.xml"
+          x = manifest.read_text()
+          x = x.replace('android:label="@string/app_name"', 'android:label="Wudroid"')
+          x = x.replace(
+              'android:name=".MainActivity"\n            android:exported="true"',
+              'android:name=".MainActivity"\n            android:exported="true"\n            android:label="Wudroid"'
+          )
+          manifest.write_text(x)
+
+          # Fail the build early if Wudroid identity did not get applied.
+          if 'android:label="Wudroid"' not in manifest.read_text():
+              raise SystemExit("Wudroid manifest label patch failed")
+          if 'applicationId = "com.cometinhastudios.wudroid"' not in gradle.read_text():
+              raise SystemExit("Wudroid applicationId patch failed")
           PY
 
       - name: Check Wudroid frontend Kotlin

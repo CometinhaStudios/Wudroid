@@ -91,6 +91,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.documentfile.provider.DocumentFile
 import info.cemu.cemu.emulation.EmulationActivity
 import info.cemu.cemu.games.list.GamesListViewModel
 import info.cemu.cemu.common.settings.AppSettingsStore
@@ -215,8 +216,9 @@ private fun WudroidRoot() {
     val folderLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
-        if (uri != null) {
-            addGameFolder(context, uri)
+        if (uri != null && addGameFolder(context, uri)) {
+            // Do not reload native titles inside the SAF callback.
+            // Let the ViewModel refresh after the picker has returned.
             refreshLibraryRequest++
         }
     }
@@ -503,7 +505,11 @@ private fun LibraryScreen(
     var favoritesOnly by remember { mutableStateOf(false) }
 
     LaunchedEffect(refreshRequest) {
-        if (refreshRequest > 0) gameListViewModel.refreshGames()
+        if (refreshRequest > 0 && gameListViewModel.gamePathsHaveChanged()) {
+            // SAF has already returned and the Activity is stable here.
+            kotlinx.coroutines.delay(150)
+            gameListViewModel.refreshGames()
+        }
     }
 
     val shownGames = remember(games, favoritesOnly) {
@@ -1433,17 +1439,39 @@ private fun startGame(context: Context, game: Game) {
     }
 }
 
-private fun addGameFolder(context: Context, uri: Uri) {
-    try {
-        context.contentResolver.takePersistableUriPermission(
-            uri,
+private fun addGameFolder(context: Context, uri: Uri): Boolean {
+    return try {
+        val grantedFlags =
             Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        )
-    } catch (_: Throwable) {}
-    safeRun {
-        NativeSettings.addGamesPath(uri.toString())
-        NativeSettings.saveSettings()
-        NativeGameTitles.reloadGameTitles()
+
+        context.contentResolver.takePersistableUriPermission(uri, grantedFlags)
+
+        // Match the Android port's own GamePathsScreen behavior.
+        val documentFile = DocumentFile.fromTreeUri(context, uri)
+            ?: run {
+                Toast.makeText(context, "Não foi possível acessar essa pasta.", Toast.LENGTH_LONG).show()
+                return false
+            }
+
+        val gamesPath = documentFile.uri.toString()
+        if (safeGamePaths().contains(gamesPath)) {
+            Toast.makeText(context, "Essa pasta já está na biblioteca.", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        NativeSettings.addGamesPath(gamesPath)
+
+        // Important: do NOT call saveSettings()/reloadGameTitles() in this SAF callback.
+        // The Activity/ViewModel handles refresh after returning from the picker.
+        Toast.makeText(context, "Pasta adicionada.", Toast.LENGTH_SHORT).show()
+        true
+    } catch (t: Throwable) {
+        Toast.makeText(
+            context,
+            "Falha ao adicionar pasta: ${t.javaClass.simpleName}",
+            Toast.LENGTH_LONG
+        ).show()
+        false
     }
 }
 

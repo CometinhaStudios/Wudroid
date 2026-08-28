@@ -1,16 +1,18 @@
-# Wudroid 0.0.8 Build Fix 1
+# Wudroid 0.0.8 — BuildFix 2
 
-Fixes frontend compilation against the current SSimco/Cemu Android API:
+Corrige dois bugs observados no APK funcional:
 
-- `GamesListViewModel` package/class name;
-- `NativeInput.EmulatedControllerType`;
-- `NativeSettings.VSyncMode`;
-- `NativeGameTitles.CPUMode`;
-- real touch-overlay persistence through `AppSettingsStore` DataStore;
-- immutable `InputOverlaySettings.copy(...)` usage;
-- `ColumnScope` receiver;
-- Foundation opt-in for long-click cards;
-- controller settings now call `NativeInput.saveInputs()`.
+1. **Nome no launcher**
+   - força `Wudroid` diretamente no `AndroidManifest.xml`;
+   - mantém `applicationId = com.cometinhastudios.wudroid`;
+   - evita que traduções/recursos herdados mostrem `Cemu`.
 
-The workflow now compiles Kotlin first so frontend mistakes fail quickly instead
-of waiting ~25 minutes for the native core build.
+2. **Crash ao adicionar pasta**
+   - usa `DocumentFile.fromTreeUri(...)`, como o frontend Android upstream;
+   - persiste a permissão SAF;
+   - não chama `NativeSettings.saveSettings()` nem
+     `NativeGameTitles.reloadGameTitles()` dentro do callback do seletor;
+   - a biblioteca recarrega depois, pelo `GamesListViewModel`, após o seletor fechar;
+   - trata pasta duplicada e erro de acesso sem fechar o app.
+
+A emulação/core não foi alterada.
