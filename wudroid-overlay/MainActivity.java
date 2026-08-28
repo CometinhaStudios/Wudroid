@@ -1,6 +1,6 @@
 package info.cemu.cemu;
 
-import android.app.Activity;
+import android.content.ClipData;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
@@ -11,7 +11,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -19,8 +21,9 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import info.cemu.cemu.emulation.EmulationActivity;
+import info.cemu.cemu.nativeinterface.NativeSettings;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_OPEN_GAME = 7001;
     private WebView webView;
     private FrameLayout root;
@@ -29,9 +32,6 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Android 15/16 can enforce edge-to-edge. We deliberately handle every
-        // system inset ourselves so the Wudroid UI never sits under Samsung's
-        // status bar, camera cutout or gesture/navigation area.
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
@@ -69,11 +69,18 @@ public class MainActivity extends Activity {
                             | WindowInsetsCompat.Type.navigationBars()
                             | WindowInsetsCompat.Type.displayCutout());
             view.setPadding(safe.left, safe.top, safe.right, safe.bottom);
-            return windowInsets;
+            return WindowInsetsCompat.CONSUMED;
         });
         ViewCompat.requestApplyInsets(root);
 
         webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Match the original Cemu launcher behavior before opening emulation.
+        NativeSettings.saveSettings();
     }
 
     private void openGamePicker() {
@@ -94,16 +101,31 @@ public class MainActivity extends Activity {
         }
 
         Uri uri = data.getData();
+        int takeFlags = data.getFlags() &
+                (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         try {
-            getContentResolver().takePersistableUriPermission(
-                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getContentResolver().takePersistableUriPermission(uri, takeFlags);
         } catch (SecurityException ignored) {
+            // Some document providers do not support persistable grants.
         }
 
-        Intent emulationIntent = new Intent(this, EmulationActivity.class);
-        emulationIntent.setData(uri);
-        emulationIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        startActivity(emulationIntent);
+        try {
+            NativeSettings.saveSettings();
+
+            Intent emulationIntent = new Intent(this, EmulationActivity.class);
+            emulationIntent.setAction(Intent.ACTION_VIEW);
+            // Use the exact launch contract used by the upstream Android port.
+            emulationIntent.putExtra(EmulationActivity.EXTRA_LAUNCH_PATH, uri.toString());
+            // Keep data too so content URI permission propagation remains explicit.
+            emulationIntent.setData(uri);
+            emulationIntent.setClipData(ClipData.newRawUri("wiiu-game", uri));
+            emulationIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(emulationIntent);
+        } catch (Throwable t) {
+            Toast.makeText(this,
+                    "Falha ao iniciar a emulação: " + t.getClass().getSimpleName(),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     public final class WudroidBridge {
@@ -119,7 +141,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String version() {
-            return "0.0.5";
+            return "0.0.6";
         }
     }
 }

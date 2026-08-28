@@ -21,8 +21,6 @@ jobs:
       - name: Checkout Wudroid
         uses: actions/checkout@v6
 
-      # Use the maintained Android port directly. Its current .gitmodules uses
-      # the public Exzap/ZArchive repository instead of the removed SSimco fork.
       - name: Checkout Cemu Android core
         uses: actions/checkout@v6
         with:
@@ -51,19 +49,17 @@ jobs:
             "ndk;26.1.10909125" \
             "cmake;3.22.1"
 
-      - name: Apply Wudroid frontend
+      - name: Apply Wudroid frontend safely
         shell: bash
         run: |
           set -euo pipefail
           APP="cemu-engine/src/android/app"
 
-          # Replace only the Android launcher/frontend. The emulation core stays
-          # from the Android Cemu port.
+          # Keep the upstream manifest intact. This is important because the
+          # Android port's provider/activity declarations can change over time.
           rm -f "$APP/src/main/java/info/cemu/cemu/MainActivity.kt"
           cp wudroid-overlay/MainActivity.java \
             "$APP/src/main/java/info/cemu/cemu/MainActivity.java"
-          cp wudroid-overlay/AndroidManifest.xml \
-            "$APP/src/main/AndroidManifest.xml"
 
           mkdir -p "$APP/src/main/assets"
           cp app/src/main/assets/index.html "$APP/src/main/assets/index.html"
@@ -73,13 +69,20 @@ jobs:
           from pathlib import Path
           import re
 
-          p = Path('cemu-engine/src/android/app/build.gradle.kts')
-          s = p.read_text()
+          gradle = Path('cemu-engine/src/android/app/build.gradle.kts')
+          s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 5', s)
-          s = re.sub(r'versionName\s*=\s*getVersionName\(\)', 'versionName = "0.0.5"', s)
-          p.write_text(s)
+          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 6', s)
+          s = re.sub(r'versionName\s*=\s*getVersionName\(\)', 'versionName = "0.0.6"', s)
+          gradle.write_text(s)
+
+          strings = Path('cemu-engine/src/android/app/src/main/res/values/strings.xml')
+          if strings.exists():
+              x = strings.read_text()
+              x = re.sub(r'<string name="app_name">.*?</string>',
+                         '<string name="app_name">Wudroid</string>', x, flags=re.S)
+              strings.write_text(x)
           PY
 
       - name: Build release APK
@@ -95,7 +98,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-
           APK="$(find cemu-engine/src/android/app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
           if [ -z "$APK" ]; then
             echo "No APK was generated"
@@ -111,23 +113,22 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.0.5-aligned.apk
+            "$APK" out/Wudroid-0.0.6-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.0.5.apk \
-            out/Wudroid-0.0.5-aligned.apk
+            --out out/Wudroid-0.0.6.apk \
+            out/Wudroid-0.0.6-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.0.5.apk
-          ls -lh out/Wudroid-0.0.5.apk
+            out/Wudroid-0.0.6.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.0.5-APK
-          path: out/Wudroid-0.0.5.apk
+          name: Wudroid-0.0.6-APK
+          path: out/Wudroid-0.0.6.apk
           if-no-files-found: error
           compression-level: 0
