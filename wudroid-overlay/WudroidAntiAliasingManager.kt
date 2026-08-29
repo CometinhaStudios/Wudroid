@@ -76,7 +76,7 @@ object WudroidAntiAliasingManager {
                 val pack = NativeGraphicPacks.getGraphicPack(info.id) ?: continue
                 val groups = pack.presets.filter { isAaGroup(pack.name, it.category) }
                 for (group in groups) {
-                    val target = choosePreset(mode, group.presets) ?: continue
+                    val target = choosePreset(mode, group.presets.toList()) ?: continue
                     if (!pack.isActive()) pack.setActive(true)
                     if (group.activePreset != target) group.activePreset = target
                     changed = true
