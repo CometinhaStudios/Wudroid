@@ -1,0 +1,1 @@
+Minecraft Wii U Graphic Pack files in this patch come from cemu-project/cemu_graphic_packs v980, using the archive supplied during Wudroid development. The original rules/patch files are kept unchanged. See the upstream project for licensing and contributors.

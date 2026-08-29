@@ -80,6 +80,12 @@ jobs:
           mkdir -p "$APP/src/main/assets/wudroid_graphic_packs/NewSuperMarioBrosU/Graphics"
           cp -a wudroid-overlay/graphicpacks/NewSuperMarioBrosU/Graphics/. \
             "$APP/src/main/assets/wudroid_graphic_packs/NewSuperMarioBrosU/Graphics/"
+          mkdir -p "$APP/src/main/assets/wudroid_graphic_packs/MinecraftWiiUEdition/Workarounds/CrashFix"
+          cp -a wudroid-overlay/graphicpacks/MinecraftWiiUEdition/Workarounds/CrashFix/. \
+            "$APP/src/main/assets/wudroid_graphic_packs/MinecraftWiiUEdition/Workarounds/CrashFix/"
+          mkdir -p "$APP/src/main/assets/wudroid_graphic_packs/MinecraftWiiUEdition/Graphics/Resolution"
+          cp -a wudroid-overlay/graphicpacks/MinecraftWiiUEdition/Graphics/Resolution/. \
+            "$APP/src/main/assets/wudroid_graphic_packs/MinecraftWiiUEdition/Graphics/Resolution/"
           python3 wudroid-overlay/apply-graphicpacks.py
 
           cp -a wudroid-overlay/res/. "$APP/src/main/res/"
@@ -92,6 +98,9 @@ jobs:
           cp wudroid-overlay/WudroidTouchLayout.kt "$JAVA/WudroidTouchLayout.kt"
           cp wudroid-overlay/WudroidResolutionManager.kt "$JAVA/WudroidResolutionManager.kt"
           cp wudroid-overlay/WudroidCoverArt.kt "$JAVA/WudroidCoverArt.kt"
+          cp wudroid-overlay/WudroidAntiAliasingManager.kt "$JAVA/WudroidAntiAliasingManager.kt"
+          cp wudroid-overlay/WudroidPerGameGraphics.kt "$JAVA/WudroidPerGameGraphics.kt"
+          cp wudroid-overlay/WudroidCompatibilityManager.kt "$JAVA/WudroidCompatibilityManager.kt"
           python3 wudroid-overlay/apply-graphics-touch-ui.py
           python3 wudroid-overlay/apply-touch-layout.py
           python3 wudroid-overlay/apply-v009-ui.py
@@ -102,6 +111,7 @@ jobs:
             "$APP/src/main/java/com/wudcompress/android/core/WudEngine.java"
           cp wudroid-overlay/WudroidWuxImporter.kt "$JAVA/WudroidWuxImporter.kt"
           python3 wudroid-overlay/apply-v010-wux-importer.py
+          python3 wudroid-overlay/apply-v010b-features.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -112,9 +122,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 14', s)
+          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 15', s)
           s = re.sub(r'versionName\s*=\s*getVersionName\(\)',
-                     'versionName = "0.1.0a-wux-importer-test1"', s)
+                     'versionName = "0.1.0b-minecraft-pergame-aa"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -173,21 +183,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.0A-WUX-Importer-Test1-aligned.apk
+            "$APK" out/Wudroid-0.1.0B-Minecraft-PerGame-AA-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.0A-WUX-Importer-Test1.apk \
-            out/Wudroid-0.1.0A-WUX-Importer-Test1-aligned.apk
+            --out out/Wudroid-0.1.0B-Minecraft-PerGame-AA.apk \
+            out/Wudroid-0.1.0B-Minecraft-PerGame-AA-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.0A-WUX-Importer-Test1.apk
+            out/Wudroid-0.1.0B-Minecraft-PerGame-AA.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.0A-WUX-Importer-Test1-APK
-          path: out/Wudroid-0.1.0A-WUX-Importer-Test1.apk
+          name: Wudroid-0.1.0B-Minecraft-PerGame-AA-APK
+          path: out/Wudroid-0.1.0B-Minecraft-PerGame-AA.apk
           if-no-files-found: error
           compression-level: 0

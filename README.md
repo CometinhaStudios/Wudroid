@@ -1,37 +1,50 @@
-# Wudroid 0.1.0-A — WUX Importer — Test 1
+# Wudroid 0.1.0-B — Minecraft + Per-game Graphics + AA + Importer UX
 
-Primeiro APK de teste do novo sistema de importação da 0.1.0.
+## Minecraft Wii U
 
-Ao tocar em **Adicionar** na biblioteca aparecem duas opções:
+Adiciona os arquivos oficiais do `cemu_graphic_packs` v980:
 
-- **Adicionar pasta**
-- **Importar arquivo WUX**
+- Minecraft Wii U Mii Crash Fix
+- Minecraft Wii U Resolution pack
 
-O importador usa o `WudEngine.java` do projeto
-`CometinhaStudios/WudCompressAndroid` (WudCompressMobile).
+O Wudroid ativa automaticamente o Crash Fix quando o Title ID é Minecraft Wii U.
+O próprio pack informa que o workaround foi feito para a atualização mais recente v688.
 
-Fluxo deste primeiro teste:
+## Gráficos individuais por jogo
 
-1. seleciona a pasta da biblioteca;
-2. seleciona um `.wux`;
-3. valida o cabeçalho WUX0;
-4. converte WUX -> WUD dentro da pasta escolhida;
-5. verifica o resultado byte a byte;
-6. atualiza a biblioteca;
-7. **mantém o WUX original**.
+Segure um jogo na biblioteca e abra `Configurações gráficas deste jogo`.
+O perfil é salvo pelo Title ID e permite:
 
-Se ocorrer erro, o WUD incompleto é removido e o WUX original fica intacto.
+- Vulkan padrão / Vulkan X / usar global
+- resolução individual
+- VSync individual
+- filtro de ampliação
+- filtro de redução
+- anti-aliasing real quando o Graphic Pack daquele jogo expõe presets
 
-## Importante
+## Anti-aliasing
 
-Este é o **0.1.0-A Test 1**. Ainda não faz a etapa final WUD ->
-`code/content/meta`. Primeiro vamos confirmar no aparelho real que a integração
-WudCompressMobile + SAF + biblioteca é estável. Depois adicionamos a extração do
-disco.
+A configuração global agora oferece:
 
-Um WUD reconstruído pode ocupar muito mais espaço que o WUX, então deixe espaço
-livre suficiente no destino.
+- Padrão do jogo
+- Desativado
+- FXAA
+- NVIDIA FXAA
 
-Artifact esperado:
+Esses modos usam presets reais de Graphic Packs. No perfil individual, o Wudroid lista
+os nomes exatos dos presets encontrados para aquele jogo. Se não houver pack com AA,
+a interface informa isso em vez de fingir que a opção funciona.
 
-`Wudroid-0.1.0A-WUX-Importer-Test1.apk`
+## Importador WUX
+
+Durante a conversão a janela mostra apenas `Importando jogo` e o indicador de progresso.
+Depois que a importação termina e é verificada, o Wudroid pergunta:
+
+- `Apagar WUX`
+- `Manter WUX`
+
+O arquivo original só é apagado depois de confirmação explícita.
+
+## APK esperado
+
+`Wudroid-0.1.0B-Minecraft-PerGame-AA.apk`

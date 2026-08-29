@@ -66,7 +66,7 @@ object WudroidWuxImporter {
         runCatching {
             resolver.takePersistableUriPermission(
                 inputUri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
         }
 
@@ -156,12 +156,24 @@ object WudroidWuxImporter {
                 postProgress(mainHandler, onProgress, "Concluído", 100)
                 return@withContext Result(
                     true,
-                    "Importação concluída e verificada. WUX original mantido.",
+                    "Importação concluída e verificada.",
                     outputDocument.uri,
                     outputDocument.name ?: outputName,
                 )
             }
         }
+    }
+
+    fun deleteOriginalWux(context: Context, inputUri: Uri): Boolean {
+        val resolver = context.contentResolver
+        return runCatching {
+            val document = DocumentFile.fromSingleUri(context, inputUri)
+            if (document != null && document.exists()) {
+                document.delete()
+            } else {
+                resolver.delete(inputUri, null, null) > 0
+            }
+        }.getOrDefault(false)
     }
 
     private fun uniqueOutputName(tree: DocumentFile, inputName: String): String {

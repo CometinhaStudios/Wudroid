@@ -42,10 +42,11 @@ fun WudroidGraphicsSettingsPanel() {
     var resolutionScale by remember {
         mutableStateOf(WudroidResolutionManager.getScale(context))
     }
-    var vsync by remember { mutableIntStateOf(readInt { NativeSettings.getVsyncMode() }) }
-    var upscaling by remember { mutableIntStateOf(readInt { NativeSettings.getUpscalingFilter() }) }
-    var downscaling by remember { mutableIntStateOf(readInt { NativeSettings.getDownscalingFilter() }) }
+    var vsync by remember { mutableIntStateOf(WudroidGameGraphicsProfiles.getGlobalVsync(context)) }
+    var upscaling by remember { mutableIntStateOf(WudroidGameGraphicsProfiles.getGlobalUpscaling(context)) }
+    var downscaling by remember { mutableIntStateOf(WudroidGameGraphicsProfiles.getGlobalDownscaling(context)) }
     var fullscreenScaling by remember { mutableIntStateOf(readInt { NativeSettings.getFullscreenScaling() }) }
+    var antiAliasing by remember { mutableStateOf(WudroidAntiAliasingManager.getGlobalMode(context)) }
 
     Text("Gráficos", color = GraphicsBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
     Spacer(Modifier.height(6.dp))
@@ -70,7 +71,7 @@ fun WudroidGraphicsSettingsPanel() {
         ),
         onSelected = {
             vsync = it
-            writeSetting { NativeSettings.setVsyncMode(it) }
+            writeSetting { NativeSettings.setVsyncMode(it) }; WudroidGameGraphicsProfiles.setGlobalVsync(context, it)
         }
     )
 
@@ -82,7 +83,7 @@ fun WudroidGraphicsSettingsPanel() {
         options = scalingFilterOptions(),
         onSelected = {
             upscaling = it
-            writeSetting { NativeSettings.setUpscalingFilter(it) }
+            writeSetting { NativeSettings.setUpscalingFilter(it) }; WudroidGameGraphicsProfiles.setGlobalUpscaling(context, it)
         }
     )
 
@@ -94,7 +95,7 @@ fun WudroidGraphicsSettingsPanel() {
         options = scalingFilterOptions(),
         onSelected = {
             downscaling = it
-            writeSetting { NativeSettings.setDownscalingFilter(it) }
+            writeSetting { NativeSettings.setDownscalingFilter(it) }; WudroidGameGraphicsProfiles.setGlobalDownscaling(context, it)
         }
     )
 
@@ -117,10 +118,12 @@ fun WudroidGraphicsSettingsPanel() {
         }
     )
 
-    GraphicsInfoRow(
-        title = "Método de Anti-aliasing",
-        value = "Padrão do jogo / Graphic Pack",
-        detail = "Só será mostrado como seletor quando o pack do jogo expuser presets reais."
+    AntiAliasingSelectorRow(
+        selected = antiAliasing,
+        onSelected = {
+            antiAliasing = it
+            WudroidAntiAliasingManager.setGlobalMode(context, it)
+        }
     )
 
     GraphicsInfoRow(
@@ -198,6 +201,66 @@ private fun ResolutionSelectorRow(
                 TextButton(onClick = { showDialog = false }) {
                     Text("Cancelar")
                 }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AntiAliasingSelectorRow(
+    selected: String,
+    onSelected: (String) -> Unit,
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    val label = WudroidAntiAliasingManager.globalMethods
+        .firstOrNull { it.value == selected }?.label ?: "Padrão do jogo"
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .clickable { showDialog = true },
+        colors = CardDefaults.cardColors(containerColor = GraphicsCard),
+        shape = RoundedCornerShape(15.dp)
+    ) {
+        Column(Modifier.padding(15.dp)) {
+            Text("Método de Anti-aliasing", fontSize = 16.sp)
+            Spacer(Modifier.height(3.dp))
+            Text(label, color = GraphicsBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Spacer(Modifier.height(3.dp))
+            Text(
+                "Usa presets reais dos Graphic Packs. Jogos sem suporte mantêm o anti-aliasing padrão.",
+                color = GraphicsMuted,
+                fontSize = 11.sp
+            )
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Método de Anti-aliasing") },
+            text = {
+                Column {
+                    WudroidAntiAliasingManager.globalMethods.forEach { method ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onSelected(method.value)
+                                    showDialog = false
+                                }
+                                .padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = method.value == selected, onClick = null)
+                            Text(method.label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) { Text("Cancelar") }
             }
         )
     }

@@ -44,8 +44,14 @@ object WudroidResolutionManager {
     fun labelFor(scale: Float): String =
         options.minByOrNull { abs(it.scale - scale) }?.label ?: "1X (720p/480p)"
 
-    fun applyForGame(context: Context, game: NativeGameTitles.Game): Boolean {
-        val scale = getScale(context)
+    fun applyForGame(context: Context, game: NativeGameTitles.Game): Boolean =
+        applyForGame(context, game, getScale(context))
+
+    fun applyForGame(
+        context: Context,
+        game: NativeGameTitles.Game,
+        scale: Float,
+    ): Boolean {
         return runCatching {
             NativeGraphicPacks.refreshGraphicPacks()
 
@@ -56,8 +62,9 @@ object WudroidResolutionManager {
 
             infosLoop@ for (info in infos) {
                 val pack = NativeGraphicPacks.getGraphicPack(info.id) ?: continue@infosLoop
-                val resolutionGroups = pack.presets.filter {
-                    it.category?.contains("Resolution", ignoreCase = true) == true
+                val resolutionGroups = pack.presets.filter { group ->
+                    group.category?.contains("Resolution", ignoreCase = true) == true ||
+                        (group.category == null && pack.name.contains("Resolution", ignoreCase = true))
                 }
                 if (resolutionGroups.isEmpty()) continue@infosLoop
 

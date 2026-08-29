@@ -28,6 +28,20 @@ object WudroidBundledGraphicPacks {
             targetRelative =
                 "graphicPacks/WudroidBundled/NewSuperMarioBrosU/Graphics",
         ),
+        PackSpec(
+            version = "Github980-MinecraftWiiU-MiiCrashFix",
+            assetRoot =
+                "wudroid_graphic_packs/MinecraftWiiUEdition/Workarounds/CrashFix",
+            targetRelative =
+                "graphicPacks/WudroidBundled/MinecraftWiiUEdition/Workarounds/CrashFix",
+        ),
+        PackSpec(
+            version = "Github980-MinecraftWiiU-Resolution",
+            assetRoot =
+                "wudroid_graphic_packs/MinecraftWiiUEdition/Graphics/Resolution",
+            targetRelative =
+                "graphicPacks/WudroidBundled/MinecraftWiiUEdition/Graphics/Resolution",
+        ),
     )
 
     fun install(context: Context): Boolean {
