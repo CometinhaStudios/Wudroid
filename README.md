@@ -1,51 +1,41 @@
-# Wudroid 0.1.1 — FPS Unlock — Test 1
+# Wudroid 0.1.1 — FrameGen Foundation 1
 
-This starts the 0.1.1 line.
+This corrects the direction of 0.1.1:
 
-## Per-game FPS unlock
+## Removed
+- 45 bundled 60 FPS/FPS++/uncapped Graphic Packs
+- `WudroidFpsPatchManager`
+- per-game `FPS desbloqueado` patch selector
 
-Long-press a game -> `Configurações gráficas deste jogo` -> `FPS`.
+Compatibility/workaround packs such as the NSMBU and Minecraft crash fixes are
+**not** removed.
 
-Options:
+## Added
+### Lossless.dll import
+Advanced Settings -> Frame Generation:
+- import the user's own `Lossless.dll`
+- validate MZ + PE headers
+- copy it into Wudroid private storage
+- SHA-256 fingerprint
+- replace/remove it safely
+- no downloading/bundling of proprietary assets
 
-- `Original`
-- `FPS desbloqueado (60 FPS)` when a compatible v980 patch is detected
+### Per-game Frame Generation profile
+Long-press game -> per-game graphics:
+- Disabled
+- `LSFG 2X [Foundation]`
 
-When enabled, Wudroid:
+A private session file is created before game launch for the upcoming native
+Vulkan presentation hook.
 
-1. matches the Graphic Pack to the game's Title ID;
-2. activates the game's FPS/FPS++/60FPS/uncapped pack;
-3. selects a 60 FPS preset when the pack exposes an FPS limit;
-4. applies it before boot.
+## Important status
+This is intentionally called **Foundation 1**. It does NOT yet interpolate
+frames. The DLL path, validation and per-game wiring are real; the next native
+test must connect the Vulkan presenter to the frame-generation pipeline.
 
-When `Original` is selected, Wudroid disables those FPS patches again.
-
-This is not generic frame generation. It uses the game's own community patch,
-so the goal is 60 FPS at native game speed.
-
-## Included collection
-
-The build bundles **45 FPS-related packs** from Graphic Packs v980,
-including normal 60 FPS packs, FPS++, static-FPS, uncapped-framerate and
-partial 60 FPS packs.
-
-Some patches are version-specific or only affect part of a game. The UI marks
-the feature as a per-game patch rather than promising universal compatibility.
-
-See `FPS_PACKS_V980.md` for the exact list.
-
-## Kept from 0.1.0
-
-- WUX importer + post-import delete confirmation
-- per-game graphics
-- Minecraft / NSMBU compatibility packs
-- real resolution scaling
-- Graphic-Pack anti-aliasing integration
-- Vulkan X
-- performance overlay
-- Wudroid touch layout
-- automatic box art
+Eden's Android LSFG merge touched thousands of lines across the Vulkan
+presentation path, so Wudroid will do this in tested stages rather than
+pretending a UI toggle is already functional.
 
 ## Expected APK
-
-`Wudroid-0.1.1-FPS-Unlock-Test1.apk`
+`Wudroid-0.1.1-FrameGen-Foundation1.apk`

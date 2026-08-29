@@ -153,7 +153,7 @@ object WudroidGameGraphicsProfiles {
             ?: WudroidResolutionManager.getScale(context)
         WudroidResolutionManager.applyForGame(context, game, scale)
         WudroidAntiAliasingManager.applyForGame(context, game, getAa(context, titleId))
-        WudroidFpsPatchManager.applyForGame(context, game)
+        WudroidFrameGeneration.prepareForLaunch(context, game)
 
         val engine = getEngine(context, titleId)
         return if (engine == USE_GLOBAL) {
@@ -178,13 +178,10 @@ fun WudroidPerGameGraphicsDialog(
     var upscale by remember { mutableIntStateOf(WudroidGameGraphicsProfiles.getUpscaling(context, id)) }
     var downscale by remember { mutableIntStateOf(WudroidGameGraphicsProfiles.getDownscaling(context, id)) }
     var aa by remember { mutableStateOf(WudroidGameGraphicsProfiles.getAa(context, id)) }
-    var fpsMode by remember {
-        mutableIntStateOf(WudroidFpsPatchManager.getMode(context, id))
+    var frameGenMode by remember {
+        mutableIntStateOf(WudroidFrameGeneration.getMode(context, id))
     }
     val aaPresets = remember(game.titleId) { WudroidAntiAliasingManager.availablePresets(game) }
-    val fpsAvailability = remember(game.titleId) {
-        WudroidFpsPatchManager.availability(game)
-    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -246,44 +243,30 @@ fun WudroidPerGameGraphicsDialog(
                         WudroidGameGraphicsProfiles.setDownscaling(context, id, it)
                     }
 
-                    ProfileSection("FPS")
-                    ProfileChoice("Original", fpsMode == WudroidFpsPatchManager.MODE_ORIGINAL) {
-                        fpsMode = WudroidFpsPatchManager.MODE_ORIGINAL
-                        WudroidFpsPatchManager.setMode(context, id, fpsMode)
+                    ProfileSection("Frame Generation")
+                    ProfileChoice(
+                        "Desativado",
+                        frameGenMode == WudroidFrameGeneration.MODE_OFF
+                    ) {
+                        frameGenMode = WudroidFrameGeneration.MODE_OFF
+                        WudroidFrameGeneration.setMode(context, id, frameGenMode)
                     }
-
-                    if (fpsAvailability.available) {
-                        ProfileChoice(
-                            "FPS desbloqueado (60 FPS)",
-                            fpsMode == WudroidFpsPatchManager.MODE_60_FPS
-                        ) {
-                            fpsMode = WudroidFpsPatchManager.MODE_60_FPS
-                            WudroidFpsPatchManager.setMode(context, id, fpsMode)
-                        }
-
-                        Text(
-                            "Patch encontrado: ${fpsAvailability.packNames.joinToString()}",
-                            color = ProfileMuted,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
-                        )
-                        Text(
-                            "Usa patch específico do jogo para tentar 60 FPS sem " +
-                                "dobrar a velocidade. Alguns packs são parciais ou " +
-                                "dependem da versão/update do jogo.",
-                            color = ProfileMuted,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    } else {
-                        Text(
-                            "Nenhum patch de 60 FPS do Graphic Packs v980 foi " +
-                                "encontrado para este jogo.",
-                            color = ProfileMuted,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
-                        )
+                    ProfileChoice(
+                        "LSFG 2X [Foundation]",
+                        frameGenMode == WudroidFrameGeneration.MODE_LSFG_2X
+                    ) {
+                        frameGenMode = WudroidFrameGeneration.MODE_LSFG_2X
+                        WudroidFrameGeneration.setMode(context, id, frameGenMode)
                     }
+                    Text(
+                        if (WudroidFrameGeneration.hasDll(context))
+                            "Lossless.dll pronta. O hook Vulkan entra no próximo teste nativo."
+                        else
+                            "Importe sua Lossless.dll em Configurações avançadas antes de usar LSFG.",
+                        color = ProfileMuted,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                    )
 
                     ProfileSection("Anti-aliasing")
                     ProfileChoice(
