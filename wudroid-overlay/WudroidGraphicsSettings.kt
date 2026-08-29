@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +37,11 @@ private data class GraphicsOption(val value: Int, val label: String)
 
 @Composable
 fun WudroidGraphicsSettingsPanel() {
+    val context = LocalContext.current
+
+    var resolutionScale by remember {
+        mutableStateOf(WudroidResolutionManager.getScale(context))
+    }
     var vsync by remember { mutableIntStateOf(readInt { NativeSettings.getVsyncMode() }) }
     var upscaling by remember { mutableIntStateOf(readInt { NativeSettings.getUpscalingFilter() }) }
     var downscaling by remember { mutableIntStateOf(readInt { NativeSettings.getDownscalingFilter() }) }
@@ -44,17 +50,19 @@ fun WudroidGraphicsSettingsPanel() {
     Text("Gráficos", color = GraphicsBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
     Spacer(Modifier.height(6.dp))
 
-    GraphicsInfoRow(
-        title = "Resolução interna",
-        value = "1X (nativa do jogo)",
-        detail = "Resoluções maiores continuam sendo aplicadas por Graphic Packs específicos de cada jogo."
+    ResolutionSelectorRow(
+        selectedScale = resolutionScale,
+        onSelected = {
+            resolutionScale = it
+            WudroidResolutionManager.setScale(context, it)
+        }
     )
 
     GraphicsSelectorRow(
         title = "Modo de VSync",
         value = vsyncLabel(vsync),
         selectedValue = vsync,
-        detail = "Usa os modos que o backend Cemu Android realmente expõe.",
+        detail = "Ligado diretamente ao backend do Cemu Android.",
         options = listOf(
             GraphicsOption(NativeSettings.VSyncMode.OFF, "Imediato (Desligado)"),
             GraphicsOption(NativeSettings.VSyncMode.DOUBLE_BUFFERING, "VSync duplo"),
@@ -70,7 +78,7 @@ fun WudroidGraphicsSettingsPanel() {
         title = "Filtro de adaptação da janela",
         value = scalingFilterLabel(upscaling),
         selectedValue = upscaling,
-        detail = "Filtro usado quando a imagem precisa ser ampliada.",
+        detail = "Filtro real usado quando a imagem precisa ser ampliada.",
         options = scalingFilterOptions(),
         onSelected = {
             upscaling = it
@@ -82,7 +90,7 @@ fun WudroidGraphicsSettingsPanel() {
         title = "Filtro de redução",
         value = scalingFilterLabel(downscaling),
         selectedValue = downscaling,
-        detail = "Filtro usado quando a imagem precisa ser reduzida.",
+        detail = "Filtro real usado quando a imagem precisa ser reduzida.",
         options = scalingFilterOptions(),
         onSelected = {
             downscaling = it
@@ -92,11 +100,15 @@ fun WudroidGraphicsSettingsPanel() {
 
     GraphicsSelectorRow(
         title = "Escala da tela",
-        value = if (fullscreenScaling == NativeSettings.FullscreenScaling.STRETCH) "Esticar" else "Manter proporção",
+        value = if (fullscreenScaling == NativeSettings.FullscreenScaling.STRETCH)
+            "Esticar" else "Manter proporção",
         selectedValue = fullscreenScaling,
         detail = "Controla como a imagem ocupa a tela do aparelho.",
         options = listOf(
-            GraphicsOption(NativeSettings.FullscreenScaling.KEEP_ASPECT_RATIO, "Manter proporção"),
+            GraphicsOption(
+                NativeSettings.FullscreenScaling.KEEP_ASPECT_RATIO,
+                "Manter proporção"
+            ),
             GraphicsOption(NativeSettings.FullscreenScaling.STRETCH, "Esticar")
         ),
         onSelected = {
@@ -107,17 +119,88 @@ fun WudroidGraphicsSettingsPanel() {
 
     GraphicsInfoRow(
         title = "Método de Anti-aliasing",
-        value = "Padrão do jogo",
-        detail = "O core Android atual não expõe anti-aliasing global. Quando houver opção por jogo, ela será ligada aos Graphic Packs."
+        value = "Padrão do jogo / Graphic Pack",
+        detail = "Só será mostrado como seletor quando o pack do jogo expuser presets reais."
     )
 
     GraphicsInfoRow(
         title = "Filtros avançados",
         value = "Vulkan X — em desenvolvimento",
-        detail = "FSR, Lanczos, MMPX, Mitchell e outros só entram quando houver implementação real; não foram criados botões falsos."
+        detail = "FSR, Lanczos, MMPX e Mitchell continuam fora até existir implementação real."
     )
 
     Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+private fun ResolutionSelectorRow(
+    selectedScale: Float,
+    onSelected: (Float) -> Unit,
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .clickable { showDialog = true },
+        colors = CardDefaults.cardColors(containerColor = GraphicsCard),
+        shape = RoundedCornerShape(15.dp)
+    ) {
+        Column(Modifier.padding(15.dp)) {
+            Text("Resolução (TV/GamePad)", fontSize = 16.sp)
+            Spacer(Modifier.height(3.dp))
+            Text(
+                WudroidResolutionManager.labelFor(selectedScale),
+                color = GraphicsBlue,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                "Aplicada de verdade ao abrir o jogo por Graphic Pack. " +
+                    "Valores abaixo de 1X reduzem a carga da GPU.",
+                color = GraphicsMuted,
+                fontSize = 11.sp
+            )
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Resolução (TV/GamePad)") },
+            text = {
+                Column {
+                    WudroidResolutionManager.options.forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onSelected(option.scale)
+                                    showDialog = false
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = kotlin.math.abs(
+                                    option.scale - selectedScale
+                                ) < 0.001f,
+                                onClick = null
+                            )
+                            Text(option.label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 @Composable
