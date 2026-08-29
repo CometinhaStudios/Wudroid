@@ -153,6 +153,7 @@ object WudroidGameGraphicsProfiles {
             ?: WudroidResolutionManager.getScale(context)
         WudroidResolutionManager.applyForGame(context, game, scale)
         WudroidAntiAliasingManager.applyForGame(context, game, getAa(context, titleId))
+        WudroidFpsPatchManager.applyForGame(context, game)
 
         val engine = getEngine(context, titleId)
         return if (engine == USE_GLOBAL) {
@@ -177,7 +178,13 @@ fun WudroidPerGameGraphicsDialog(
     var upscale by remember { mutableIntStateOf(WudroidGameGraphicsProfiles.getUpscaling(context, id)) }
     var downscale by remember { mutableIntStateOf(WudroidGameGraphicsProfiles.getDownscaling(context, id)) }
     var aa by remember { mutableStateOf(WudroidGameGraphicsProfiles.getAa(context, id)) }
+    var fpsMode by remember {
+        mutableIntStateOf(WudroidFpsPatchManager.getMode(context, id))
+    }
     val aaPresets = remember(game.titleId) { WudroidAntiAliasingManager.availablePresets(game) }
+    val fpsAvailability = remember(game.titleId) {
+        WudroidFpsPatchManager.availability(game)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -237,6 +244,45 @@ fun WudroidPerGameGraphicsDialog(
                     ProfileChoices(filterChoices(), downscale) {
                         downscale = it
                         WudroidGameGraphicsProfiles.setDownscaling(context, id, it)
+                    }
+
+                    ProfileSection("FPS")
+                    ProfileChoice("Original", fpsMode == WudroidFpsPatchManager.MODE_ORIGINAL) {
+                        fpsMode = WudroidFpsPatchManager.MODE_ORIGINAL
+                        WudroidFpsPatchManager.setMode(context, id, fpsMode)
+                    }
+
+                    if (fpsAvailability.available) {
+                        ProfileChoice(
+                            "FPS desbloqueado (60 FPS)",
+                            fpsMode == WudroidFpsPatchManager.MODE_60_FPS
+                        ) {
+                            fpsMode = WudroidFpsPatchManager.MODE_60_FPS
+                            WudroidFpsPatchManager.setMode(context, id, fpsMode)
+                        }
+
+                        Text(
+                            "Patch encontrado: ${fpsAvailability.packNames.joinToString()}",
+                            color = ProfileMuted,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                        )
+                        Text(
+                            "Usa patch específico do jogo para tentar 60 FPS sem " +
+                                "dobrar a velocidade. Alguns packs são parciais ou " +
+                                "dependem da versão/update do jogo.",
+                            color = ProfileMuted,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    } else {
+                        Text(
+                            "Nenhum patch de 60 FPS do Graphic Packs v980 foi " +
+                                "encontrado para este jogo.",
+                            color = ProfileMuted,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                        )
                     }
 
                     ProfileSection("Anti-aliasing")

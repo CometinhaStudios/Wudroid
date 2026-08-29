@@ -1,1 +1,10 @@
-Minecraft Wii U Graphic Pack files in this patch come from cemu-project/cemu_graphic_packs v980, using the archive supplied during Wudroid development. The original rules/patch files are kept unchanged. See the upstream project for licensing and contributors.
+# Cemu Graphic Packs source notice
+
+The FPS patch collection included in this test build comes from
+`cemu-project/cemu_graphic_packs` v980.
+
+Repository license: CC0-1.0.
+
+Wudroid only adds the Android integration/automatic per-game selection layer;
+the original game patches remain attributed to their respective authors in
+their own `rules.txt` / patch files.
