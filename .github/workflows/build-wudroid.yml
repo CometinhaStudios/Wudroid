@@ -29,6 +29,14 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
+      - name: Checkout WudCompressMobile core
+        uses: actions/checkout@v6
+        with:
+          repository: CometinhaStudios/WudCompressAndroid
+          ref: main
+          path: wudcompress-mobile
+          fetch-depth: 1
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -88,6 +96,13 @@ jobs:
           python3 wudroid-overlay/apply-touch-layout.py
           python3 wudroid-overlay/apply-v009-ui.py
 
+          # Wudroid 0.1.0-A: WUX importer based on WudCompressMobile.
+          mkdir -p "$APP/src/main/java/com/wudcompress/android/core"
+          cp wudcompress-mobile/app/src/main/java/com/wudcompress/android/core/WudEngine.java \
+            "$APP/src/main/java/com/wudcompress/android/core/WudEngine.java"
+          cp wudroid-overlay/WudroidWuxImporter.kt "$JAVA/WudroidWuxImporter.kt"
+          python3 wudroid-overlay/apply-v010-wux-importer.py
+
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -97,9 +112,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 13', s)
+          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 14', s)
           s = re.sub(r'versionName\s*=\s*getVersionName\(\)',
-                     'versionName = "0.0.9-resolution-boxart-test1"', s)
+                     'versionName = "0.1.0a-wux-importer-test1"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -128,7 +143,7 @@ jobs:
         working-directory: cemu-engine/src/android
         run: |
           chmod +x gradlew
-          ./gradlew :app:compileReleaseKotlin --stacktrace --no-daemon
+          ./gradlew :app:compileReleaseKotlin :app:compileReleaseJavaWithJavac --stacktrace --no-daemon
 
       - name: Build release APK
         working-directory: cemu-engine/src/android
@@ -158,21 +173,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.0.9-ResolutionBoxArt-Test1-aligned.apk
+            "$APK" out/Wudroid-0.1.0A-WUX-Importer-Test1-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.0.9-ResolutionBoxArt-Test1.apk \
-            out/Wudroid-0.0.9-ResolutionBoxArt-Test1-aligned.apk
+            --out out/Wudroid-0.1.0A-WUX-Importer-Test1.apk \
+            out/Wudroid-0.1.0A-WUX-Importer-Test1-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.0.9-ResolutionBoxArt-Test1.apk
+            out/Wudroid-0.1.0A-WUX-Importer-Test1.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.0.9-ResolutionBoxArt-Test1-APK
-          path: out/Wudroid-0.0.9-ResolutionBoxArt-Test1.apk
+          name: Wudroid-0.1.0A-WUX-Importer-Test1-APK
+          path: out/Wudroid-0.1.0A-WUX-Importer-Test1.apk
           if-no-files-found: error
           compression-level: 0
