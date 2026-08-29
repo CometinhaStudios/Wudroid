@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.RadioButton
@@ -19,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,12 +43,16 @@ fun WudroidFrameGenerationDialog(
 ) {
     val context = LocalContext.current
     val titleId = game.titleId
+    val scrollState = rememberScrollState()
 
     var config by remember {
         mutableStateOf(WudroidFrameGenerationManager.gameConfig(context, titleId))
     }
     var dllStatus by remember {
         mutableStateOf(WudroidFrameGenerationManager.losslessDllInfo(context))
+    }
+    var nativeState by remember {
+        mutableStateOf(WudroidFrameGenerationManager.nativeState())
     }
 
     val dllPicker = rememberLauncherForActivityResult(
@@ -57,6 +62,7 @@ fun WudroidFrameGenerationDialog(
         val result = WudroidFrameGenerationManager.importLosslessDll(context, uri)
         result.onSuccess {
             dllStatus = it
+            nativeState = WudroidFrameGenerationManager.nativeState()
             Toast.makeText(context, "Lossless.dll importado", Toast.LENGTH_SHORT).show()
         }.onFailure {
             Toast.makeText(
@@ -77,7 +83,10 @@ fun WudroidFrameGenerationDialog(
         title = { Text("Frame generation") },
         text = {
             Column(
-                modifier = Modifier.heightIn(max = 620.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 520.dp)
+                    .verticalScroll(scrollState),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -91,7 +100,7 @@ fun WudroidFrameGenerationDialog(
                         )
                         Text(
                             "Insere frames interpolados entre os frames renderizados. " +
-                                "Quando ativado, o Wudroid força apresentação FIFO.",
+                                "Quando ativado, o Wudroid usa apresentação FIFO.",
                             color = FrameGenMuted,
                             fontSize = 12.sp,
                         )
@@ -102,7 +111,7 @@ fun WudroidFrameGenerationDialog(
                     )
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
 
                 TextButton(
                     onClick = {
@@ -115,9 +124,27 @@ fun WudroidFrameGenerationDialog(
 
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
+                FrameGenSection("Status")
+                Text(
+                    WudroidFrameGenerationManager.backendStatusText(context, config),
+                    color = if (nativeState.readyForRendererIntegration) FrameGenBlue else FrameGenMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(nativeState.engine, color = FrameGenMuted, fontSize = 11.sp)
+                Text(
+                    if (nativeState.ahbSupported) {
+                        "AHardwareBuffer GPU: disponível"
+                    } else {
+                        "AHardwareBuffer GPU: indisponível"
+                    },
+                    color = FrameGenMuted,
+                    fontSize = 11.sp,
+                )
+
                 FrameGenSection("Lossless Scaling")
                 Text(dllStatus, color = FrameGenMuted, fontSize = 12.sp)
-                Row {
+                Row(modifier = Modifier.fillMaxWidth()) {
                     TextButton(
                         onClick = {
                             dllPicker.launch(
@@ -143,16 +170,17 @@ fun WudroidFrameGenerationDialog(
                     }
                 }
                 Text(
-                    "O Wudroid não inclui nem baixa Lossless.dll. Use apenas sua " +
-                        "própria cópia. O arquivo original escolhido não é apagado.",
+                    "O Wudroid não inclui nem baixa Lossless.dll. Use apenas sua própria " +
+                        "cópia. O arquivo original escolhido não é apagado.",
                     color = FrameGenMuted,
                     fontSize = 11.sp,
                 )
 
                 FrameGenSection("Target frame rate")
                 FrameGenRadio(
-                    "Usar multiplicador fixo",
-                    config.targetFps == WudroidFrameGenerationManager.TARGET_FIXED_MULTIPLIER
+                    label = "Usar multiplicador fixo",
+                    selected =
+                        config.targetFps == WudroidFrameGenerationManager.TARGET_FIXED_MULTIPLIER,
                 ) {
                     save(
                         config.copy(
@@ -162,14 +190,30 @@ fun WudroidFrameGenerationDialog(
                     )
                 }
                 listOf(60, 90, 120, 144, 165).forEach { fps ->
-                    FrameGenRadio("$fps FPS", config.targetFps == fps) {
+                    FrameGenRadio(
+                        label = "$fps FPS",
+                        selected = config.targetFps == fps,
+                    ) {
                         save(config.copy(targetFps = fps, useGlobal = false))
                     }
                 }
 
                 FrameGenSection("Frame multiplier")
+                val multiplierEditable =
+                    config.targetFps == WudroidFrameGenerationManager.TARGET_FIXED_MULTIPLIER
+                if (!multiplierEditable) {
+                    Text(
+                        "O Target FPS controla o multiplicador automaticamente.",
+                        color = FrameGenMuted,
+                        fontSize = 11.sp,
+                    )
+                }
                 listOf(2, 3, 4).forEach { multiplier ->
-                    FrameGenRadio("${multiplier}x", config.multiplier == multiplier) {
+                    FrameGenRadio(
+                        label = "${multiplier}x",
+                        selected = config.multiplier == multiplier,
+                        enabled = multiplierEditable,
+                    ) {
                         save(config.copy(multiplier = multiplier, useGlobal = false))
                     }
                 }
@@ -177,7 +221,7 @@ fun WudroidFrameGenerationDialog(
                 FrameGenSection("Frame queue target")
                 FrameGenRadio(
                     "Menor latência (sem buffer)",
-                    config.queueTarget == WudroidFrameGenerationManager.QUEUE_LOWEST_LATENCY
+                    config.queueTarget == WudroidFrameGenerationManager.QUEUE_LOWEST_LATENCY,
                 ) {
                     save(
                         config.copy(
@@ -188,7 +232,7 @@ fun WudroidFrameGenerationDialog(
                 }
                 FrameGenRadio(
                     "Balanceado (1 frame)",
-                    config.queueTarget == WudroidFrameGenerationManager.QUEUE_BALANCED
+                    config.queueTarget == WudroidFrameGenerationManager.QUEUE_BALANCED,
                 ) {
                     save(
                         config.copy(
@@ -199,7 +243,7 @@ fun WudroidFrameGenerationDialog(
                 }
                 FrameGenRadio(
                     "Mais suave (2 frames)",
-                    config.queueTarget == WudroidFrameGenerationManager.QUEUE_SMOOTHEST
+                    config.queueTarget == WudroidFrameGenerationManager.QUEUE_SMOOTHEST,
                 ) {
                     save(
                         config.copy(
@@ -213,7 +257,7 @@ fun WudroidFrameGenerationDialog(
                     title = "Combinar estimativa de movimento com o jogo",
                     subtitle =
                         "Calcula o movimento na resolução real renderizada pelo jogo, " +
-                        "antes de qualquer upscaling.",
+                            "antes de qualquer upscaling.",
                     checked = config.matchMotionToGame,
                 ) {
                     save(config.copy(matchMotionToGame = it, useGlobal = false))
@@ -221,21 +265,21 @@ fun WudroidFrameGenerationDialog(
 
                 FrameGenSwitch(
                     title = "Shaders de meia precisão",
-                    subtitle =
-                        "Prefere shaders FP16 quando o driver e o modelo suportarem.",
+                    subtitle = "Prefere FP16 quando o driver e o modelo suportarem.",
                     checked = config.halfPrecisionShaders,
                 ) {
                     save(config.copy(halfPrecisionShaders = it, useGlobal = false))
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
-                    "Status do Teste 1: importação da DLL, perfis por jogo e " +
-                        "configuração de apresentação estão ativos. A etapa seguinte " +
-                        "liga o motor Vulkan LSFG aos frames do renderer do Wudroid.",
+                    "Teste 1b: o popup agora rola corretamente e o motor LSFG-VK é " +
+                        "linkado ao APK. O status não marca frames como gerados até o " +
+                        "hook de apresentação Vulkan do Cemu estar ativo.",
                     color = FrameGenMuted,
                     fontSize = 11.sp,
                 )
+                Spacer(Modifier.height(6.dp))
             }
         },
         confirmButton = {
@@ -259,17 +303,25 @@ private fun FrameGenSection(title: String) {
 private fun FrameGenRadio(
     label: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = null)
-        Text(label)
+        RadioButton(
+            selected = selected,
+            onClick = null,
+            enabled = enabled,
+        )
+        Text(
+            label,
+            color = if (enabled) Color.Unspecified else FrameGenMuted,
+        )
     }
 }
 

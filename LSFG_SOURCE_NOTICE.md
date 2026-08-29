@@ -1,18 +1,13 @@
 # LSFG / Lossless Scaling source notice
 
-Wudroid does **not** ship, download, or redistribute `Lossless.dll`.
+Wudroid does **not** ship, download, or redistribute `Lossless.dll` or extracted proprietary shader blobs.
 
-The user must select their own legitimately obtained copy. Test 1 only copies
-that user-selected file into Wudroid private storage after validating that it
-looks like a Windows PE/DLL file.
+The user must select their own legitimately obtained copy.
 
-Planned native backend reference:
-- PancakeTAS/lsfg-vk (MIT)
-- FrankBarretta/lsfg-vk-android (MIT Android AHardwareBuffer patches)
+Native frame-generation library used by this Test 1b build:
+- FrankBarretta/lsfg-vk-android, `release` branch — MIT license, derived from PancakeTAS/lsfg-vk.
 
-Important technical detail:
-Android does not execute `Lossless.dll` directly. Android LSFG projects parse
-the DLL to obtain the frame-generation shader/model resources, then execute
-the interpolation pipeline with native Vulkan code.
+Implementation reference used for the Wudroid renderer plan:
+- Eden Emulator PR #4263, LSFG-VK Android/Vulkan implementation (GPL-3.0-or-later files).
 
-No proprietary Lossless Scaling asset is included in this patch.
+This package only links the MIT framegen engine and adds Wudroid-specific JNI/UI preparation. It does not copy Eden's GPL renderer implementation into Cemu in Test 1b.

@@ -29,10 +29,20 @@ object WudroidFrameGenerationManager {
         val halfPrecisionShaders: Boolean = true,
     )
 
+    data class NativeState(
+        val bridgeCompiled: Boolean,
+        val ahbSupported: Boolean,
+        val engine: String,
+    ) {
+        val readyForRendererIntegration: Boolean
+            get() = bridgeCompiled && ahbSupported && engine.contains("framegen linked")
+    }
+
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private fun gamePrefix(titleId: Long) = "game_${java.lang.Long.toUnsignedString(titleId, 16)}_"
+    private fun gamePrefix(titleId: Long) =
+        "game_${java.lang.Long.toUnsignedString(titleId, 16)}_"
 
     private fun dllFile(context: Context): File =
         File(context.filesDir, "$DLL_DIR/$DLL_NAME")
@@ -95,11 +105,43 @@ object WudroidFrameGenerationManager {
         return "Lossless.dll • %.1f MB".format(mb)
     }
 
+    fun nativeState(): NativeState {
+        val bridge = runCatching {
+            WudroidFrameGenerationNative.isBridgeCompiled()
+        }.getOrDefault(false)
+        val ahb = if (bridge) {
+            runCatching { WudroidFrameGenerationNative.hasAhardwareBufferSupport() }
+                .getOrDefault(false)
+        } else {
+            false
+        }
+        val engine = if (bridge) {
+            runCatching { WudroidFrameGenerationNative.lsfgEngineVersion() }
+                .getOrDefault("Bridge nativo carregado")
+        } else {
+            "Bridge nativo indisponível"
+        }
+        return NativeState(bridge, ahb, engine)
+    }
+
+    fun backendStatusText(context: Context, config: Config): String {
+        if (!config.enabled) return "Desativado"
+        if (!hasLosslessDll(context)) return "Aguardando Lossless.dll"
+
+        val state = nativeState()
+        if (!state.bridgeCompiled) return "Bridge JNI não carregado"
+        if (!state.ahbSupported) return "AHardwareBuffer GPU não suportado"
+        if (!state.readyForRendererIntegration) return "Motor LSFG ainda não linkado"
+
+        // Test 1b links the real framegen engine, but the Cemu present path still
+        // needs to hand its rendered images to the LSFG chain. Do not report
+        // generated frames until that renderer hook exists.
+        return "LSFG carregado • aguardando hook do renderer"
+    }
+
     /**
      * Copies a user-supplied Lossless.dll into private app storage.
-     * The original file selected by the user is never modified or deleted.
-     *
-     * This validates the DOS MZ header and PE signature before accepting it.
+     * The original selected file is never modified or deleted.
      */
     fun importLosslessDll(context: Context, uri: Uri): Result<String> = runCatching {
         val name = queryDisplayName(context, uri)
@@ -145,14 +187,10 @@ object WudroidFrameGenerationManager {
         dllFile(context).let { !it.exists() || it.delete() }
 
     /**
-     * Test-1 launch preparation.
+     * Applies the presentation requirement before boot.
      *
-     * The settings are real and persisted now. If frame generation is enabled
-     * and the DLL is installed, Wudroid forces FIFO-style VSync before boot,
-     * matching the requirement of the LSFG presentation path.
-     *
-     * Native interpolation is wired in the next renderer stage; this method
-     * intentionally does not pretend generated frames already exist.
+     * The LSFG engine is linked in Test 1b, but generated frames are only
+     * considered active after the Vulkan renderer hook is implemented.
      */
     fun prepareBeforeLaunch(
         context: Context,
@@ -196,12 +234,20 @@ object WudroidFrameGenerationManager {
                 (raf.readUnsignedByte() shl 16) or
                 (raf.readUnsignedByte() shl 24)
 
-            if (peOffset <= 0 || peOffset.toLong() + 4L > raf.length()) return@use false
+            if (peOffset <= 0 || peOffset.toLong() + 24L > raf.length()) return@use false
             raf.seek(peOffset.toLong())
-            raf.readUnsignedByte() == 'P'.code &&
-                raf.readUnsignedByte() == 'E'.code &&
-                raf.readUnsignedByte() == 0 &&
-                raf.readUnsignedByte() == 0
+            if (raf.readUnsignedByte() != 'P'.code ||
+                raf.readUnsignedByte() != 'E'.code ||
+                raf.readUnsignedByte() != 0 ||
+                raf.readUnsignedByte() != 0
+            ) {
+                return@use false
+            }
+
+            // IMAGE_FILE_HEADER.Machine. Lossless.dll is normally x86-64, but
+            // the resource parser only needs a structurally valid PE image.
+            val machine = raf.readUnsignedByte() or (raf.readUnsignedByte() shl 8)
+            machine != 0
         }
     }.getOrDefault(false)
 }
