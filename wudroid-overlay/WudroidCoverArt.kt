@@ -71,11 +71,17 @@ fun WudroidGameCover(
                 )
             }
             else -> {
-                WudroidIcon(
-                    WIcon.Gamepad,
-                    Modifier.fillMaxSize(0.34f),
-                    Color(0xFF00B8F5),
-                )
+                // Keep this fallback self-contained. WudroidIcon/WIcon are
+                // private to MainActivity.kt and cannot be referenced here.
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.material3.Text(
+                        text = "W",
+                        color = Color(0xFF00B8F5),
+                    )
+                }
             }
         }
     }

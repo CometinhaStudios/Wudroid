@@ -54,18 +54,18 @@ object WudroidResolutionManager {
 
             var changed = false
 
-            infos.forEach { info ->
-                val pack = NativeGraphicPacks.getGraphicPack(info.id) ?: return@forEach
+            infosLoop@ for (info in infos) {
+                val pack = NativeGraphicPacks.getGraphicPack(info.id) ?: continue@infosLoop
                 val resolutionGroups = pack.presets.filter {
                     it.category?.contains("Resolution", ignoreCase = true) == true
                 }
-                if (resolutionGroups.isEmpty()) return@forEach
+                if (resolutionGroups.isEmpty()) continue@infosLoop
 
                 if (!pack.isActive()) {
                     pack.setActive(true)
                 }
 
-                resolutionGroups.forEach { group ->
+                for (group in resolutionGroups) {
                     val preset = choosePreset(
                         context = context,
                         packId = info.id,
@@ -73,7 +73,7 @@ object WudroidResolutionManager {
                         presets = group.presets.toList(),
                         currentPreset = group.activePreset,
                         scale = scale,
-                    ) ?: return@forEach
+                    ) ?: continue
 
                     if (group.activePreset != preset) {
                         group.activePreset = preset
