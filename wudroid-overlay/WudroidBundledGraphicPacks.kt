@@ -42,11 +42,6 @@ object WudroidBundledGraphicPacks {
             targetRelative =
                 "graphicPacks/WudroidBundled/MinecraftWiiUEdition/Graphics/Resolution",
         ),
-        PackSpec(
-            version = "Github980-FPSCollection-45-v1",
-            assetRoot = "wudroid_graphic_packs/FPS980",
-            targetRelative = "graphicPacks/WudroidBundled/FPS980",
-        ),
     )
 
     fun install(context: Context): Boolean {

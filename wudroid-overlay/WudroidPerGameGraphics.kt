@@ -153,7 +153,7 @@ object WudroidGameGraphicsProfiles {
             ?: WudroidResolutionManager.getScale(context)
         WudroidResolutionManager.applyForGame(context, game, scale)
         WudroidAntiAliasingManager.applyForGame(context, game, getAa(context, titleId))
-        WudroidFrameGeneration.prepareForLaunch(context, game)
+        WudroidFrameGenerationManager.prepareBeforeLaunch(context, game)
 
         val engine = getEngine(context, titleId)
         return if (engine == USE_GLOBAL) {
@@ -178,10 +178,15 @@ fun WudroidPerGameGraphicsDialog(
     var upscale by remember { mutableIntStateOf(WudroidGameGraphicsProfiles.getUpscaling(context, id)) }
     var downscale by remember { mutableIntStateOf(WudroidGameGraphicsProfiles.getDownscaling(context, id)) }
     var aa by remember { mutableStateOf(WudroidGameGraphicsProfiles.getAa(context, id)) }
-    var frameGenMode by remember {
-        mutableIntStateOf(WudroidFrameGeneration.getMode(context, id))
-    }
+    var showFrameGeneration by remember { mutableStateOf(false) }
     val aaPresets = remember(game.titleId) { WudroidAntiAliasingManager.availablePresets(game) }
+
+    if (showFrameGeneration) {
+        WudroidFrameGenerationDialog(
+            game = game,
+            onDismiss = { showFrameGeneration = false },
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -243,30 +248,32 @@ fun WudroidPerGameGraphicsDialog(
                         WudroidGameGraphicsProfiles.setDownscaling(context, id, it)
                     }
 
-                    ProfileSection("Frame Generation")
-                    ProfileChoice(
-                        "Desativado",
-                        frameGenMode == WudroidFrameGeneration.MODE_OFF
+                    ProfileSection("Frame generation")
+                    val frameGen = WudroidFrameGenerationManager.gameConfig(context, id)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showFrameGeneration = true }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        frameGenMode = WudroidFrameGeneration.MODE_OFF
-                        WudroidFrameGeneration.setMode(context, id, frameGenMode)
+                        Column(Modifier.weight(1f)) {
+                            Text("Configurar frame generation", fontWeight = FontWeight.Medium)
+                            Text(
+                                when {
+                                    frameGen.useGlobal -> "Usando configuração global"
+                                    frameGen.enabled &&
+                                        WudroidFrameGenerationManager.hasLosslessDll(context) ->
+                                        "Ativado • ${frameGen.multiplier}x"
+                                    frameGen.enabled -> "Ativado • Lossless.dll não importado"
+                                    else -> "Desativado"
+                                },
+                                color = ProfileMuted,
+                                fontSize = 12.sp,
+                            )
+                        }
+                        Text("›", color = ProfileBlue, fontSize = 24.sp)
                     }
-                    ProfileChoice(
-                        "LSFG 2X [Foundation]",
-                        frameGenMode == WudroidFrameGeneration.MODE_LSFG_2X
-                    ) {
-                        frameGenMode = WudroidFrameGeneration.MODE_LSFG_2X
-                        WudroidFrameGeneration.setMode(context, id, frameGenMode)
-                    }
-                    Text(
-                        if (WudroidFrameGeneration.hasDll(context))
-                            "Lossless.dll pronta. O hook Vulkan entra no próximo teste nativo."
-                        else
-                            "Importe sua Lossless.dll em Configurações avançadas antes de usar LSFG.",
-                        color = ProfileMuted,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
-                    )
 
                     ProfileSection("Anti-aliasing")
                     ProfileChoice(

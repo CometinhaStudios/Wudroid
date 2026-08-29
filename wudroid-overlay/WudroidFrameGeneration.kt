@@ -2,287 +2,206 @@ package info.cemu.cemu
 
 import android.content.Context
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import android.provider.OpenableColumns
 import info.cemu.cemu.nativeinterface.NativeGameTitles
+import info.cemu.cemu.nativeinterface.NativeSettings
 import java.io.File
 import java.io.RandomAccessFile
-import java.security.MessageDigest
-import java.util.Locale
 
-/**
- * Wudroid Frame Generation — foundation layer.
- *
- * This build intentionally does NOT claim that interpolation is active yet.
- * It implements the user-owned Lossless.dll import/validation path and the
- * per-game configuration that the native Vulkan hook will consume next.
- */
-object WudroidFrameGeneration {
+object WudroidFrameGenerationManager {
     private const val PREFS = "wudroid_frame_generation"
-    private const val KEY_DLL_HASH = "dll_sha256"
-    private const val KEY_DLL_SIZE = "dll_size"
-    private const val KEY_DLL_NAME = "dll_name"
+    private const val DLL_DIR = "wudroid/lsfg"
+    private const val DLL_NAME = "Lossless.dll"
 
-    const val MODE_OFF = 0
-    const val MODE_LSFG_2X = 1
+    const val TARGET_FIXED_MULTIPLIER = 0
+
+    const val QUEUE_LOWEST_LATENCY = 0
+    const val QUEUE_BALANCED = 1
+    const val QUEUE_SMOOTHEST = 2
+
+    data class Config(
+        val enabled: Boolean = false,
+        val useGlobal: Boolean = false,
+        val targetFps: Int = TARGET_FIXED_MULTIPLIER,
+        val multiplier: Int = 2,
+        val queueTarget: Int = QUEUE_BALANCED,
+        val matchMotionToGame: Boolean = true,
+        val halfPrecisionShaders: Boolean = true,
+    )
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private fun dir(context: Context) =
-        File(context.filesDir, "wudroid/framegen").apply { mkdirs() }
+    private fun gamePrefix(titleId: Long) = "game_${java.lang.Long.toUnsignedString(titleId, 16)}_"
 
-    fun dllFile(context: Context) = File(dir(context), "Lossless.dll")
+    private fun dllFile(context: Context): File =
+        File(context.filesDir, "$DLL_DIR/$DLL_NAME")
 
-    fun hasDll(context: Context): Boolean {
-        val file = dllFile(context)
-        return file.isFile && file.length() > 1024 * 1024 && isPeDll(file)
-    }
-
-    fun dllSummary(context: Context): String {
-        if (!hasDll(context)) return "Lossless.dll não importada"
+    fun globalConfig(context: Context): Config {
         val p = prefs(context)
-        val sizeMb = p.getLong(KEY_DLL_SIZE, dllFile(context).length()) / (1024.0 * 1024.0)
-        val hash = p.getString(KEY_DLL_HASH, "") ?: ""
-        val hashShort = if (hash.length >= 12) hash.take(12) else hash
-        return String.format(
-            Locale.US,
-            "DLL válida • %.1f MB%s",
-            sizeMb,
-            if (hashShort.isNotBlank()) " • $hashShort…" else ""
+        return Config(
+            enabled = p.getBoolean("global_enabled", false),
+            useGlobal = false,
+            targetFps = p.getInt("global_target_fps", TARGET_FIXED_MULTIPLIER),
+            multiplier = p.getInt("global_multiplier", 2).coerceIn(2, 4),
+            queueTarget = p.getInt("global_queue", QUEUE_BALANCED).coerceIn(0, 2),
+            matchMotionToGame = p.getBoolean("global_match_motion", true),
+            halfPrecisionShaders = p.getBoolean("global_fp16", true),
         )
     }
 
-    fun importDll(context: Context, uri: Uri): Result<String> = runCatching {
+    fun gameConfig(context: Context, titleId: Long): Config {
+        val p = prefs(context)
+        val prefix = gamePrefix(titleId)
+        val useGlobal = p.getBoolean("${prefix}use_global", false)
+        if (useGlobal) return globalConfig(context).copy(useGlobal = true)
+
+        return Config(
+            enabled = p.getBoolean("${prefix}enabled", false),
+            useGlobal = false,
+            targetFps = p.getInt("${prefix}target_fps", TARGET_FIXED_MULTIPLIER),
+            multiplier = p.getInt("${prefix}multiplier", 2).coerceIn(2, 4),
+            queueTarget = p.getInt("${prefix}queue", QUEUE_BALANCED).coerceIn(0, 2),
+            matchMotionToGame = p.getBoolean("${prefix}match_motion", true),
+            halfPrecisionShaders = p.getBoolean("${prefix}fp16", true),
+        )
+    }
+
+    fun saveGameConfig(context: Context, titleId: Long, config: Config) {
+        val prefix = gamePrefix(titleId)
+        prefs(context).edit()
+            .putBoolean("${prefix}use_global", config.useGlobal)
+            .putBoolean("${prefix}enabled", config.enabled)
+            .putInt("${prefix}target_fps", config.targetFps)
+            .putInt("${prefix}multiplier", config.multiplier.coerceIn(2, 4))
+            .putInt("${prefix}queue", config.queueTarget.coerceIn(0, 2))
+            .putBoolean("${prefix}match_motion", config.matchMotionToGame)
+            .putBoolean("${prefix}fp16", config.halfPrecisionShaders)
+            .apply()
+    }
+
+    fun useGlobalForGame(context: Context, titleId: Long) {
+        val prefix = gamePrefix(titleId)
+        prefs(context).edit().putBoolean("${prefix}use_global", true).apply()
+    }
+
+    fun hasLosslessDll(context: Context): Boolean =
+        dllFile(context).let { it.isFile && it.length() > 0L }
+
+    fun losslessDllInfo(context: Context): String {
+        val file = dllFile(context)
+        if (!file.isFile) return "Lossless.dll não importado"
+        val mb = file.length().toDouble() / 1024.0 / 1024.0
+        return "Lossless.dll • %.1f MB".format(mb)
+    }
+
+    /**
+     * Copies a user-supplied Lossless.dll into private app storage.
+     * The original file selected by the user is never modified or deleted.
+     *
+     * This validates the DOS MZ header and PE signature before accepting it.
+     */
+    fun importLosslessDll(context: Context, uri: Uri): Result<String> = runCatching {
+        val name = queryDisplayName(context, uri)
+        if (name != null && !name.endsWith(".dll", ignoreCase = true)) {
+            error("Selecione um arquivo .dll")
+        }
+
         val target = dllFile(context)
-        val temp = File(target.parentFile, "Lossless.dll.importing")
+        target.parentFile?.mkdirs()
+        val temp = File(target.parentFile, "$DLL_NAME.importing")
         temp.delete()
 
         context.contentResolver.openInputStream(uri)?.use { input ->
-            temp.outputStream().use { output -> input.copyTo(output, 1024 * 1024) }
-        } ?: error("Não foi possível abrir o arquivo.")
+            temp.outputStream().use { output ->
+                input.copyTo(output, bufferSize = 1024 * 1024)
+            }
+        } ?: error("Não foi possível abrir o arquivo")
 
-        if (temp.length() < 1024 * 1024) {
+        if (temp.length() < 1024L) {
             temp.delete()
-            error("Arquivo pequeno demais para ser Lossless.dll.")
-        }
-        if (!isPeDll(temp)) {
-            temp.delete()
-            error("O arquivo selecionado não parece ser uma DLL PE válida.")
+            error("Arquivo DLL pequeno ou inválido")
         }
 
-        val hash = sha256(temp)
+        if (!isPortableExecutable(temp)) {
+            temp.delete()
+            error("O arquivo não parece ser uma DLL/PE válida")
+        }
+
         if (target.exists() && !target.delete()) {
             temp.delete()
-            error("Não foi possível substituir a DLL anterior.")
+            error("Não foi possível substituir a DLL anterior")
         }
+
         if (!temp.renameTo(target)) {
             temp.copyTo(target, overwrite = true)
             temp.delete()
         }
 
-        prefs(context).edit()
-            .putString(KEY_DLL_HASH, hash)
-            .putLong(KEY_DLL_SIZE, target.length())
-            .putString(KEY_DLL_NAME, "Lossless.dll")
-            .apply()
-
-        "Lossless.dll importada e validada."
+        losslessDllInfo(context)
     }
 
-    fun removeDll(context: Context) {
-        dllFile(context).delete()
-        File(dir(context), "session.properties").delete()
-        prefs(context).edit()
-            .remove(KEY_DLL_HASH)
-            .remove(KEY_DLL_SIZE)
-            .remove(KEY_DLL_NAME)
-            .apply()
-    }
-
-    fun getMode(context: Context, titleId: Long): Int =
-        prefs(context).getInt("mode_$titleId", MODE_OFF)
-
-    fun setMode(context: Context, titleId: Long, mode: Int) {
-        prefs(context).edit().putInt("mode_$titleId", mode).apply()
-    }
+    fun removeLosslessDll(context: Context): Boolean =
+        dllFile(context).let { !it.exists() || it.delete() }
 
     /**
-     * Creates a tiny private session file for the upcoming native Vulkan
-     * presenter. No proprietary DLL data is copied into the repository/APK.
+     * Test-1 launch preparation.
+     *
+     * The settings are real and persisted now. If frame generation is enabled
+     * and the DLL is installed, Wudroid forces FIFO-style VSync before boot,
+     * matching the requirement of the LSFG presentation path.
+     *
+     * Native interpolation is wired in the next renderer stage; this method
+     * intentionally does not pretend generated frames already exist.
      */
-    fun prepareForLaunch(
+    fun prepareBeforeLaunch(
         context: Context,
         game: NativeGameTitles.Game,
-    ) {
-        val mode = getMode(context, game.titleId)
-        val enabled = mode == MODE_LSFG_2X && hasDll(context)
-
-        File(dir(context), "session.properties").writeText(
-            buildString {
-                appendLine("titleId=${java.lang.Long.toUnsignedString(game.titleId, 16)}")
-                appendLine("enabled=$enabled")
-                appendLine("multiplier=${if (enabled) 2 else 1}")
-                appendLine("dll=${dllFile(context).absolutePath}")
-                // Test 1 is the integration foundation only.
-                appendLine("nativeHook=not_connected")
+    ): Config {
+        val config = gameConfig(context, game.titleId)
+        if (config.enabled && hasLosslessDll(context)) {
+            runCatching {
+                NativeSettings.setVsyncMode(NativeSettings.VSyncMode.DOUBLE_BUFFERING)
+                NativeSettings.saveSettings()
             }
-        )
+        }
+        return config
     }
 
-    private fun isPeDll(file: File): Boolean = runCatching {
-        RandomAccessFile(file, "r").use { raf ->
-            if (raf.length() < 0x100) return@use false
-            if (raf.readUnsignedByte() != 0x4D || raf.readUnsignedByte() != 0x5A) {
-                return@use false
+    private fun queryDisplayName(context: Context, uri: Uri): String? =
+        runCatching {
+            context.contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index < 0) null else cursor.getString(index)
             }
+        }.getOrNull()
 
-            raf.seek(0x3C)
-            val peOffset = Integer.reverseBytes(raf.readInt()).toLong() and 0xffffffffL
-            if (peOffset <= 0L || peOffset + 4L >= raf.length()) return@use false
+    private fun isPortableExecutable(file: File): Boolean = runCatching {
+        RandomAccessFile(file, "r").use { raf ->
+            if (raf.length() < 64L) return@use false
+            if (raf.readUnsignedByte() != 'M'.code) return@use false
+            if (raf.readUnsignedByte() != 'Z'.code) return@use false
 
-            raf.seek(peOffset)
-            raf.readUnsignedByte() == 0x50 &&
-                raf.readUnsignedByte() == 0x45 &&
-                raf.readUnsignedByte() == 0x00 &&
-                raf.readUnsignedByte() == 0x00
+            raf.seek(0x3CL)
+            val peOffset =
+                (raf.readUnsignedByte()) or
+                (raf.readUnsignedByte() shl 8) or
+                (raf.readUnsignedByte() shl 16) or
+                (raf.readUnsignedByte() shl 24)
+
+            if (peOffset <= 0 || peOffset.toLong() + 4L > raf.length()) return@use false
+            raf.seek(peOffset.toLong())
+            raf.readUnsignedByte() == 'P'.code &&
+                raf.readUnsignedByte() == 'E'.code &&
+                raf.readUnsignedByte() == 0 &&
+                raf.readUnsignedByte() == 0
         }
     }.getOrDefault(false)
-
-    private fun sha256(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(1024 * 1024)
-            while (true) {
-                val count = input.read(buffer)
-                if (count <= 0) break
-                digest.update(buffer, 0, count)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-}
-
-@Composable
-fun WudroidFrameGenerationPanel() {
-    val context = LocalContext.current
-    var status by remember { mutableStateOf(WudroidFrameGeneration.dllSummary(context)) }
-    var message by remember { mutableStateOf<String?>(null) }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            val result = WudroidFrameGeneration.importDll(context, uri)
-            message = result.fold(
-                onSuccess = { it },
-                onFailure = { it.message ?: "Falha ao importar Lossless.dll." }
-            )
-            status = WudroidFrameGeneration.dllSummary(context)
-        }
-    }
-
-    Text(
-        "Frame Generation",
-        color = Color(0xFF00B8F5),
-        fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,
-    )
-    Spacer(Modifier.height(6.dp))
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF15181D)),
-        shape = RoundedCornerShape(15.dp),
-    ) {
-        Column(Modifier.padding(15.dp)) {
-            Text("LSFG / Lossless Scaling", fontSize = 16.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                status,
-                color = if (WudroidFrameGeneration.hasDll(context))
-                    Color(0xFF00B8F5) else Color(0xFF9DA8B4),
-                fontSize = 13.sp,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Use apenas sua própria Lossless.dll de uma cópia legítima do " +
-                    "Lossless Scaling. A DLL não é incluída nem baixada pelo Wudroid.",
-                color = Color(0xFF9DA8B4),
-                fontSize = 11.sp,
-            )
-            Spacer(Modifier.height(10.dp))
-
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    launcher.launch(arrayOf(
-                        "application/x-msdownload",
-                        "application/octet-stream",
-                        "*/*"
-                    ))
-                }
-            ) {
-                Text(
-                    if (WudroidFrameGeneration.hasDll(context))
-                        "Trocar Lossless.dll" else "Importar Lossless.dll",
-                    color = Color.Black,
-                )
-            }
-
-            if (WudroidFrameGeneration.hasDll(context)) {
-                Spacer(Modifier.height(6.dp))
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF252A31)
-                    ),
-                    onClick = {
-                        WudroidFrameGeneration.removeDll(context)
-                        status = WudroidFrameGeneration.dllSummary(context)
-                        message = "Lossless.dll removida."
-                    }
-                ) {
-                    Text("Remover DLL")
-                }
-            }
-
-            if (message != null) {
-                Spacer(Modifier.height(8.dp))
-                Text(message!!, color = Color(0xFF9DA8B4), fontSize = 11.sp)
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Foundation 1: importação/validação e perfil por jogo. " +
-                    "O hook Vulkan de interpolação ainda não está conectado nesta build.",
-                color = Color(0xFFFFB74D),
-                fontSize = 11.sp,
-            )
-        }
-    }
-
-    Spacer(Modifier.height(8.dp))
 }
