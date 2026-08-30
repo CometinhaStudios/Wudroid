@@ -60,6 +60,16 @@ android {
 
     defaultConfig {
         minSdk = 29
+
+        // Test7: when LSFG is embedded as a library, AGP no longer generates
+        // application-module-only BuildConfig constants such as APPLICATION_ID,
+        // VERSION_CODE and VERSION_NAME.  Upstream LSFG references them from
+        // BenchmarkLogWriter and ShizukuCaptureEngine, so provide host values
+        // explicitly for the embedded module.
+        buildConfigField("String", "APPLICATION_ID", "\"com.cometinhastudios.wudroid\"")
+        buildConfigField("int", "VERSION_CODE", "101")
+        buildConfigField("String", "VERSION_NAME", "\"0.1.1\"")
+
         externalNativeBuild {
             cmake {
                 cppFlags += listOf(

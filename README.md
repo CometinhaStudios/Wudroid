@@ -45,14 +45,14 @@ O Wudroid não inclui, baixa ou distribui `Lossless.dll`. O arquivo continua sen
 Os demais arquivos do ZIP são mantidos porque fazem parte da sequência de patches da 0.1.1 já usada pelo repositório.
 
 
-## Test6 build fix
+## Test7 build fix
 
 - fixes the LSFG embed Gradle plugin block that failed during `Check Wudroid frontend Kotlin`;
 - uses explicit plugin ids instead of `libs.plugins.*` accessors in the external LSFG module;
 - keeps the Wudroid product version at **0.1.1**; only the test/build identifier changes.
 
 
-## Test6 build fix
+## Test7 build fix
 
 - Pins `FrankBarretta/LSFG-Android` to the official `0.1.2` tag.
 - Keeps recursive submodules so `LSFG-Android-Application` and `lsfg-vk-android` are actually checked out.
@@ -61,10 +61,15 @@ Os demais arquivos do ZIP são mantidos porque fazem parte da sequência de patc
 - Uses Cemu's existing Compose plugin instead of requiring a nonexistent `kotlin.android` alias.
 
 
-## Test6 fix
+## Test7 fix
 
 The LSFG embed depends on `com.github.topjohnwu.libsu:core/service:5.3.0`.
 Those artifacts are hosted on JitPack. Because Cemu uses
 `RepositoriesMode.FAIL_ON_PROJECT_REPOS`, this test patches Cemu's
 `dependencyResolutionManagement.repositories` and adds a content-filtered
 JitPack repository for `com.github.topjohnwu.libsu`.
+
+
+## Test7 — BuildConfig bridge
+
+Fixes the Kotlin compile failure seen after Test6 when the upstream LSFG Android application is converted into an Android library. Android library modules do not automatically expose application-only `BuildConfig.APPLICATION_ID`, `BuildConfig.VERSION_CODE`, or `BuildConfig.VERSION_NAME`. The embedded LSFG module now defines those fields explicitly using the Wudroid host identity/version so `BenchmarkLogWriter.kt` and `ShizukuCaptureEngine.kt` compile without changing the upstream call sites.
