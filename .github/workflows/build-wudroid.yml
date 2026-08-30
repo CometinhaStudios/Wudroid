@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: FrankBarretta/LSFG-Android
-          ref: main
+          ref: 0.1.2
           path: lsfg-android
           submodules: recursive
           fetch-depth: 1
@@ -144,7 +144,7 @@ jobs:
                         'applicationId = "com.cometinhastudios.wudroid"')
           s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 19', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.1-framegen-capture-test4"', s)
+                     'versionName = "0.1.1-framegen-capture-test5"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -203,21 +203,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.1-FrameGen-Capture-Test4-aligned.apk
+            "$APK" out/Wudroid-0.1.1-FrameGen-Capture-Test5-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.1-FrameGen-Capture-Test4.apk \
-            out/Wudroid-0.1.1-FrameGen-Capture-Test4-aligned.apk
+            --out out/Wudroid-0.1.1-FrameGen-Capture-Test5.apk \
+            out/Wudroid-0.1.1-FrameGen-Capture-Test5-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.1-FrameGen-Capture-Test4.apk
+            out/Wudroid-0.1.1-FrameGen-Capture-Test5.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.1-FrameGen-Capture-Test4-APK
-          path: out/Wudroid-0.1.1-FrameGen-Capture-Test4.apk
+          name: Wudroid-0.1.1-FrameGen-Capture-Test5-APK
+          path: out/Wudroid-0.1.1-FrameGen-Capture-Test5.apk
           if-no-files-found: error
           compression-level: 0
