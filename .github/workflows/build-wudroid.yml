@@ -127,6 +127,7 @@ jobs:
           python3 wudroid-overlay/apply-v011e-shader-preload.py
           python3 wudroid-overlay/apply-v011f-library-input.py
           python3 wudroid-overlay/apply-v011h-full-controller-ui.py
+          python3 wudroid-overlay/apply-v011i-original-sidebar-theme.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -137,9 +138,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 21', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 22', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.1-keyboard-mouse-mapping-test1"', s)
+                     'versionName = "0.1.1-original-sidebar-theme-test1"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
