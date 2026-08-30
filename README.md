@@ -77,3 +77,8 @@ Fixes the Kotlin compile failure seen after Test6 when the upstream LSFG Android
 
 ## Test9 — Vulkan loader fix
 Test8 reached Cemu native C++ compilation. Test9 registers vkCmdDispatch and vkCreateComputePipelines in Cemu VulkanAPI device dispatch table so WudroidFrameGenVk can compile against the Android Vulkan loader.
+
+
+## Test10 — VulkanAPI branch-compatible loader patch
+
+Fixes the Test9 preparation failure `Cannot patch VulkanAPI.cpp: no line containing vkCreateGraphicsPipelines`. The Android Cemu branch does not necessarily list every device function explicitly in `VulkanAPI.cpp`. Test10 patches the `VKFUNC_DEVICE(...)` declaration table in `VulkanAPI.h` and only duplicates loader lines in `.cpp` when a compatible explicit loader layout is actually detected. Header-driven/generated layouts are allowed to continue to the real compile step.
