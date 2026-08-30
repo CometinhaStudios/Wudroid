@@ -37,15 +37,6 @@ jobs:
           path: wudcompress-mobile
           fetch-depth: 1
 
-      - name: Checkout LSFG Android backend
-        uses: actions/checkout@v6
-        with:
-          repository: FrankBarretta/LSFG-Android
-          ref: 0.1.2
-          path: lsfg-android
-          submodules: recursive
-          fetch-depth: 1
-
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -67,12 +58,21 @@ jobs:
             "cmake;3.22.1" \
             "cmake;3.31.1"
 
+      - name: Install GLSL to SPIR-V compiler
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y glslang-tools
+
       - name: Apply Wudroid independent frontend
         shell: bash
         run: |
           set -euo pipefail
           APP="cemu-engine/src/android/app"
           JAVA="$APP/src/main/java/info/cemu/cemu"
+
+          # Capture/overlay LSFG path was retired in Test9.
+          rm -f "$JAVA/WudroidLsfgCapture.kt"
 
           rm -f "$JAVA/MainActivity.kt" "$JAVA/MainActivity.java"
           cp wudroid-overlay/MainActivity.kt "$JAVA/MainActivity.kt"
@@ -117,7 +117,6 @@ jobs:
           cp wudroid-overlay/WudroidFrameGenerationUi.kt "$JAVA/WudroidFrameGenerationUi.kt"
           cp wudroid-overlay/WudroidFrameGenerationNative.kt "$JAVA/WudroidFrameGenerationNative.kt"
           cp wudroid-overlay/WudroidFrameGenerationNative.cpp "$APP/src/main/cpp/WudroidFrameGenerationNative.cpp"
-          cp wudroid-overlay/WudroidLsfgCapture.kt "$JAVA/WudroidLsfgCapture.kt"
           python3 wudroid-overlay/apply-graphics-touch-ui.py
           python3 wudroid-overlay/apply-touch-layout.py
           python3 wudroid-overlay/apply-v009-ui.py
@@ -131,7 +130,12 @@ jobs:
           python3 wudroid-overlay/apply-v010b-features.py
           python3 wudroid-overlay/apply-v011-framegen.py
           python3 wudroid-overlay/apply-v011b-framegen-native.py
-          python3 wudroid-overlay/apply-v011c-lsfg-capture.py
+          # Wudroid Test9: direct Vulkan frame generation, no DLL/MediaProjection module.
+          VULKAN_DIR="cemu-engine/src/Cafe/HW/Latte/Renderer/Vulkan"
+          glslangValidator -V wudroid-overlay/wudroid_framegen_blend.comp -o /tmp/wudroid_framegen_blend.spv
+          python3 wudroid-overlay/embed-spv.py /tmp/wudroid_framegen_blend.spv "$VULKAN_DIR/WudroidFrameGenBlendSpv.h"
+          cp wudroid-overlay/WudroidFrameGenVk.h "$VULKAN_DIR/WudroidFrameGenVk.h"
+          python3 wudroid-overlay/apply-v011d-gamehub-framegen.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -142,9 +146,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 19', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 20', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.1-framegen-capture-test6"', s)
+                     'versionName = "0.1.1-framegen-vulkan-test9"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -203,21 +207,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.1-FrameGen-Capture-Test7-aligned.apk
+            "$APK" out/Wudroid-0.1.1-FrameGen-Vulkan-Test9-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.1-FrameGen-Capture-Test7.apk \
-            out/Wudroid-0.1.1-FrameGen-Capture-Test7-aligned.apk
+            --out out/Wudroid-0.1.1-FrameGen-Vulkan-Test9.apk \
+            out/Wudroid-0.1.1-FrameGen-Vulkan-Test9-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.1-FrameGen-Capture-Test7.apk
+            out/Wudroid-0.1.1-FrameGen-Vulkan-Test9.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.1-FrameGen-Capture-Test7-APK
-          path: out/Wudroid-0.1.1-FrameGen-Capture-Test7.apk
+          name: Wudroid-0.1.1-FrameGen-Vulkan-Test9-APK
+          path: out/Wudroid-0.1.1-FrameGen-Vulkan-Test9.apk
           if-no-files-found: error
           compression-level: 0

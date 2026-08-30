@@ -5,9 +5,9 @@ root = Path("cemu-engine")
 java = root / "src/android/app/src/main/java/info/cemu/cemu"
 cpp = root / "src/android/app/src/main/cpp"
 
-# Keep only the tiny Wudroid Android capability bridge in CemuAndroid.
-# The real LSFG implementation is built by the embedded lsfgembed Gradle
-# module in Test2, so Cemu must not compile/link a second framegen copy.
+# Compile the tiny Android/JNI bridge into CemuAndroid.
+# Test9's real frame generation state/functions live in Cemu's Vulkan renderer;
+# this file only exposes those native controls/status values to Kotlin.
 cmake = cpp / "CMakeLists.txt"
 s = cmake.read_text()
 if "WudroidFrameGenerationNative.cpp" not in s:

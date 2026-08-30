@@ -1,0 +1,7 @@
+Test9 retires these old Wudroid overlay files if they are still present in the repo:
+
+wudroid-overlay/WudroidLsfgCapture.kt
+wudroid-overlay/apply-v011c-lsfg-capture.py
+LSFG_SOURCE_NOTICE.md
+
+They are no longer referenced by the Test9 workflow.
