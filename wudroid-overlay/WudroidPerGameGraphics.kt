@@ -262,7 +262,10 @@ fun WudroidPerGameGraphicsDialog(
                             Text(
                                 when {
                                     frameGen.useGlobal -> "Usando configuração global"
-                                    frameGen.enabled -> "Ativado • Vulkan ${frameGen.multiplier}x"
+                                    frameGen.enabled &&
+                                        WudroidFrameGenerationManager.hasLosslessDll(context) ->
+                                        "Ativado • ${frameGen.multiplier}x"
+                                    frameGen.enabled -> "Ativado • Lossless.dll não importado"
                                     else -> "Desativado"
                                 },
                                 color = ProfileMuted,
