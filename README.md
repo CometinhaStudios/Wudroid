@@ -45,17 +45,26 @@ O Wudroid não inclui, baixa ou distribui `Lossless.dll`. O arquivo continua sen
 Os demais arquivos do ZIP são mantidos porque fazem parte da sequência de patches da 0.1.1 já usada pelo repositório.
 
 
-## Test5 build fix
+## Test6 build fix
 
 - fixes the LSFG embed Gradle plugin block that failed during `Check Wudroid frontend Kotlin`;
 - uses explicit plugin ids instead of `libs.plugins.*` accessors in the external LSFG module;
 - keeps the Wudroid product version at **0.1.1**; only the test/build identifier changes.
 
 
-## Test5 build fix
+## Test6 build fix
 
 - Pins `FrankBarretta/LSFG-Android` to the official `0.1.2` tag.
 - Keeps recursive submodules so `LSFG-Android-Application` and `lsfg-vk-android` are actually checked out.
 - Removes the incorrect Test4 check against Cemu's empty root `build.gradle.kts`.
 - Adds `android-library` to Cemu's version catalog using the same AGP `version.ref` already used by `android-application`.
 - Uses Cemu's existing Compose plugin instead of requiring a nonexistent `kotlin.android` alias.
+
+
+## Test6 fix
+
+The LSFG embed depends on `com.github.topjohnwu.libsu:core/service:5.3.0`.
+Those artifacts are hosted on JitPack. Because Cemu uses
+`RepositoriesMode.FAIL_ON_PROJECT_REPOS`, this test patches Cemu's
+`dependencyResolutionManagement.repositories` and adds a content-filtered
+JitPack repository for `com.github.topjohnwu.libsu`.

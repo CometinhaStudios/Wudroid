@@ -231,6 +231,47 @@ settings = android_root / "settings.gradle.kts"
 if not settings.exists():
     raise SystemExit("Cemu settings.gradle.kts not found")
 s = settings.read_text()
+
+# Test6: libsu is distributed through JitPack.  Cemu uses
+# RepositoriesMode.FAIL_ON_PROJECT_REPOS, so the repository MUST be added to
+# dependencyResolutionManagement in settings.gradle.kts (adding it to the
+# LSFG module build.gradle.kts would be ignored/rejected).
+def _matching_brace(text: str, open_pos: int) -> int:
+    depth = 0
+    for i in range(open_pos, len(text)):
+        ch = text[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+    raise SystemExit("Malformed Cemu settings.gradle.kts: unmatched brace")
+
+if "https://jitpack.io" not in s:
+    drm = s.find("dependencyResolutionManagement")
+    if drm < 0:
+        raise SystemExit("Cemu settings.gradle.kts has no dependencyResolutionManagement block")
+    drm_open = s.find("{", drm)
+    drm_close = _matching_brace(s, drm_open)
+    repos = s.find("repositories", drm_open, drm_close)
+    if repos < 0:
+        raise SystemExit("Cemu dependencyResolutionManagement has no repositories block")
+    repos_open = s.find("{", repos, drm_close)
+    if repos_open < 0:
+        raise SystemExit("Could not open Cemu dependency repositories block")
+    insert = '''
+        // Wudroid LSFG: libsu artifacts are hosted on JitPack.
+        maven {
+            url = uri("https://jitpack.io")
+            content { includeGroup("com.github.topjohnwu.libsu") }
+        }
+'''
+    s = s[:repos_open + 1] + insert + s[repos_open + 1:]
+    print("Wudroid LSFG: added JitPack repository for libsu")
+else:
+    print("Wudroid LSFG: JitPack repository already present")
+
 block = '''\ninclude(":lsfgembed")\nproject(":lsfgembed").projectDir = file("../../../lsfg-android/LSFG-Android-Application/app")\n'''
 if 'include(":lsfgembed")' not in s:
     s += block
