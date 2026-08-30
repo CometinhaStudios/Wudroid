@@ -1,0 +1,91 @@
+#version 450
+
+// Wudroid Motion Compute v0.1
+// Native midpoint synthesis. No MediaProjection, no external overlay,
+// no Lossless Scaling/LSFG dependency.
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(binding = 0, rgba8) readonly uniform image2D prevFrame;
+layout(binding = 1, rgba8) readonly uniform image2D currFrame;
+layout(binding = 2, rgba8) writeonly uniform image2D generatedFrame;
+
+layout(push_constant) uniform Params {
+    int width;
+    int height;
+    int radius;
+    float strength;
+} pc;
+
+ivec2 clampPos(ivec2 p) {
+    return clamp(p, ivec2(0), ivec2(pc.width - 1, pc.height - 1));
+}
+
+vec4 prevAt(ivec2 p) { return imageLoad(prevFrame, clampPos(p)); }
+vec4 currAt(ivec2 p) { return imageLoad(currFrame, clampPos(p)); }
+
+float luma(vec3 c) {
+    return dot(c, vec3(0.2126, 0.7152, 0.0722));
+}
+
+float motionScore(ivec2 p, ivec2 off) {
+    // Cross-shaped 5-tap matcher. Much cheaper than a full patch search and
+    // good enough for this first native test.
+    const ivec2 taps[5] = ivec2[5](
+        ivec2(0, 0), ivec2(-1, 0), ivec2(1, 0), ivec2(0, -1), ivec2(0, 1)
+    );
+    float score = 0.0;
+    for (int i = 0; i < 5; ++i) {
+        float a = luma(prevAt(p + taps[i] + off).rgb);
+        float b = luma(currAt(p + taps[i]).rgb);
+        score += abs(a - b);
+    }
+    return score;
+}
+
+void main() {
+    // One invocation estimates one motion vector for a 4x4 tile, then writes
+    // all 16 pixels. This cuts motion-search cost dramatically on mobile GPUs.
+    ivec2 origin = ivec2(gl_GlobalInvocationID.xy) * 4;
+    if (origin.x >= pc.width || origin.y >= pc.height) return;
+    ivec2 center = clampPos(origin + ivec2(2, 2));
+
+    int r = clamp(pc.radius, 1, 4);
+    float bestScore = 1e20;
+    ivec2 best = ivec2(0);
+
+    for (int y = -4; y <= 4; ++y) {
+        if (abs(y) > r) continue;
+        for (int x = -4; x <= 4; ++x) {
+            if (abs(x) > r) continue;
+            ivec2 off = ivec2(x, y);
+            float score = motionScore(center, off);
+            score += 0.0025 * float(abs(x) + abs(y));
+            if (score < bestScore) {
+                bestScore = score;
+                best = off;
+            }
+        }
+    }
+
+    vec2 halfMotion = vec2(best) * 0.5;
+    for (int yy = 0; yy < 4; ++yy) {
+        for (int xx = 0; xx < 4; ++xx) {
+            ivec2 p = origin + ivec2(xx, yy);
+            if (p.x >= pc.width || p.y >= pc.height) continue;
+
+            ivec2 prevP = ivec2(round(vec2(p) + halfMotion));
+            ivec2 currP = ivec2(round(vec2(p) - halfMotion));
+            vec4 a = prevAt(prevP);
+            vec4 b = currAt(currP);
+
+            float disagreement = length(a.rgb - b.rgb);
+            vec4 warped = mix(a, b, 0.5);
+            vec4 safeBlend = mix(prevAt(p), currAt(p), 0.5);
+            float confidence = 1.0 - smoothstep(0.18, 0.55, disagreement);
+            confidence *= clamp(pc.strength, 0.0, 1.0);
+            vec4 outColor = mix(safeBlend, warped, confidence);
+            outColor.a = mix(a.a, b.a, 0.5);
+            imageStore(generatedFrame, p, outColor);
+        }
+    }
+}

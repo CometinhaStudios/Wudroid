@@ -1,0 +1,17 @@
+# Merge these steps into the existing Wudroid build-wudroid.yml.
+# REMOVE the old "Checkout LSFG Android backend" step and apply-v011c-lsfg-capture.py.
+
+# After sdkmanager installs the NDK:
+- name: Compile Wudroid native FrameGen shader
+  shell: bash
+  run: |
+    set -euo pipefail
+    python3 wudroid-overlay/compile-framegen-shader.py
+
+# After the normal Wudroid frontend/graphics patches have been copied/applied,
+# but before Gradle compileReleaseKotlin / assembleRelease:
+- name: Apply Wudroid 0.1.1 Native FrameGen Test1
+  shell: bash
+  run: |
+    set -euo pipefail
+    python3 wudroid-overlay/apply-v011-native-framegen.py
