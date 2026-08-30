@@ -45,7 +45,7 @@ O Wudroid não inclui, baixa ou distribui `Lossless.dll`. O arquivo continua sen
 Os demais arquivos do ZIP são mantidos porque fazem parte da sequência de patches da 0.1.1 já usada pelo repositório.
 
 
-## Test3 build fix
+## Test4 build fix
 
 - fixes the LSFG embed Gradle plugin block that failed during `Check Wudroid frontend Kotlin`;
 - uses explicit plugin ids instead of `libs.plugins.*` accessors in the external LSFG module;

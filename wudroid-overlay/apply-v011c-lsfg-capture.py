@@ -17,114 +17,106 @@ if not lsfg_app.exists():
 #    We keep its full Kotlin/native capture pipeline but remove its own app id,
 #    launcher and signing/splits. It is then packaged inside Wudroid.
 # ---------------------------------------------------------------------------
-module_gradle = lsfg_app / "build.gradle.kts"
-module_gradle.write_text(r'''plugins {
-    id("com.android.library")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-}
+module_gradle_kts = lsfg_app / "build.gradle.kts"
+# Test4: do not use the Gradle plugin DSL in the external LSFG project.
+# Cemu's root build already resolves AGP/Kotlin/Compose plugins with apply(false).
+# Applying those plugins imperatively from a Groovy build script reuses that
+# classpath and avoids a second plugin-resolution request that needs a version.
+if module_gradle_kts.exists():
+    module_gradle_kts.unlink()
+module_gradle = lsfg_app / "build.gradle"
+module_gradle.write_text(r"""apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
 android {
-    namespace = "com.lsfg.android"
-    compileSdk = 35
-    ndkVersion = "27.0.12077973"
+    namespace 'com.lsfg.android'
+    compileSdk 35
+    ndkVersion '27.0.12077973'
 
     defaultConfig {
-        minSdk = 29
+        minSdk 29
         externalNativeBuild {
             cmake {
-                cppFlags += listOf(
-                    "-std=c++20",
-                    "-DNDEBUG",
-                    "-fvisibility=hidden",
-                    "-fvisibility-inlines-hidden",
-                    "-ffunction-sections",
-                    "-fdata-sections"
-                )
-                arguments += listOf(
-                    "-DANDROID_STL=c++_shared",
-                    "-DANDROID_PLATFORM=android-29",
-                    "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--gc-sections,--icf=safe"
-                )
-                abiFilters("arm64-v8a")
+                cppFlags '-std=c++20', '-DNDEBUG', '-fvisibility=hidden',
+                        '-fvisibility-inlines-hidden', '-ffunction-sections', '-fdata-sections'
+                arguments '-DANDROID_STL=c++_shared',
+                          '-DANDROID_PLATFORM=android-29',
+                          '-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--gc-sections,--icf=safe'
+                abiFilters 'arm64-v8a'
             }
         }
     }
 
     externalNativeBuild {
         cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
+            path file('src/main/cpp/CMakeLists.txt')
+            version '3.22.1'
         }
     }
 
     buildFeatures {
-        compose = true
-        aidl = true
-        buildConfig = true
+        compose true
+        aidl true
+        buildConfig true
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = '17'
     }
 
     buildTypes {
-        release {
-            isMinifyEnabled = false
-        }
-        debug {
-            isMinifyEnabled = false
-        }
+        release { minifyEnabled false }
+        debug { minifyEnabled false }
     }
 
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging true
         }
     }
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.09.03")
-    implementation(composeBom)
-    implementation("androidx.activity:activity-compose:1.9.2")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.navigation:navigation-compose:2.8.1")
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
-    implementation("androidx.documentfile:documentfile:1.0.1")
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
-    implementation("com.github.topjohnwu.libsu:core:5.3.0")
-    implementation("com.github.topjohnwu.libsu:service:5.3.0")
+    def composeBom = platform('androidx.compose:compose-bom:2024.09.03')
+    implementation composeBom
+    implementation 'androidx.activity:activity-compose:1.9.2'
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.navigation:navigation-compose:2.8.1'
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.6'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6'
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+    implementation 'dev.rikka.shizuku:api:13.1.5'
+    implementation 'dev.rikka.shizuku:provider:13.1.5'
+    implementation 'com.github.topjohnwu.libsu:core:5.3.0'
+    implementation 'com.github.topjohnwu.libsu:service:5.3.0'
 }
-''')
+""")
 
-# Test3: external modules cannot rely on generated version-catalog accessors
-# from their original standalone build. Use plugin ids already declared by
-# Cemu's root build.gradle.kts and verify that no alias slipped back in.
-check = module_gradle.read_text()
-if 'alias(libs.plugins' in check:
-    raise SystemExit('LSFG embed Gradle still contains version-catalog plugin aliases')
-for plugin_id in (
-    'id("com.android.library")',
-    'id("org.jetbrains.kotlin.android")',
-    'id("org.jetbrains.kotlin.plugin.compose")',
-):
-    if plugin_id not in check:
-        raise SystemExit(f'Missing LSFG embed plugin: {plugin_id}')
+# Fail early with a useful message if Cemu stops declaring one of the plugins
+# that the embedded LSFG module reuses.
+root_gradle = android_root / "build.gradle.kts"
+root_text = root_gradle.read_text() if root_gradle.exists() else ""
+required_root_aliases = (
+    "libs.plugins.android.library",
+    "libs.plugins.kotlin.android",
+    "libs.plugins.kotlin.compose",
+)
+missing = [x for x in required_root_aliases if x not in root_text]
+if missing:
+    raise SystemExit("Cemu root does not preload LSFG plugins: " + ", ".join(missing))
 
 # Library manifest: keep permissions/components required by the real capture
 # backend, but never replace CemuApplication and never add a second launcher.
