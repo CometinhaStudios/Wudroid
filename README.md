@@ -1,25 +1,45 @@
-# Wudroid 0.1.1b — FrameGen Native Prep — Test 1
+# Wudroid 0.1.1 — FrameGen Capture — Test 2
 
-Incremental update over `Wudroid-0.1.1-FrameGen-Config-Test1`.
+Correção incremental da **0.1.1**. A versão pública continua `0.1.1`; `Test 2` identifica apenas esta tentativa de correção do Frame Generation.
 
-## Fixed
-- Frame Generation dialog is vertically scrollable, so the bottom settings no longer disappear on smaller/tall-density screens.
-- `Target frame rate` and `Frame multiplier` no longer fight each other. A fixed target disables manual multiplier editing, matching Eden's behavior.
-- The dialog reports the real backend state instead of implying generated frames are already active.
+## O que muda neste teste
 
-## Native preparation added
-- JNI bridge compiled into `CemuAndroid`.
-- Real `lsfg-vk-android` framegen static library is pulled into the Android build from the public MIT `release` branch.
-- AHardwareBuffer GPU support probe is exposed to the UI.
-- Existing `Lossless.dll` import remains user-supplied only.
+- Mantém o popup de Frame Generation com rolagem e a lógica `Target FPS` x `multiplicador` corrigida.
+- Troca o antigo backend-placeholder por uma integração do backend Android real do projeto **LSFG-Android**.
+- O GitHub Actions baixa `FrankBarretta/LSFG-Android` com os submódulos `LSFG-Android-Application` e `lsfg-vk-android`.
+- O módulo LSFG é convertido em biblioteca Android e incorporado ao mesmo APK do Wudroid.
+- Ao importar a `Lossless.dll` do usuário, o Wudroid chama o extractor nativo real (`NativeBridge.extractShaders`) e testa o cache SPIR-V (`NativeBridge.probeShaders`).
+- Quando um jogo com FG ativado abre, o Wudroid arma a sessão e solicita, quando necessário, permissão de sobreposição e consentimento de captura de tela.
+- A captura usa o caminho MediaProjection -> AHardwareBuffer -> Vulkan/LSFG -> overlay.
+- O serviço LSFG é ajustado para **não relançar o Wudroid** quando o próprio Wudroid é o alvo; ele mantém a `EmulationActivity` atual.
+- O contador de FPS do backend é ativado para comparar FPS reais com os frames apresentados.
 
-## Important
-This build **does not yet claim end-to-end generated frames**. The LSFG engine can be linked into the APK, but Cemu still needs the renderer/present hook that passes two rendered frames into the LSFG chain and presents the generated images. That is the target for Wudroid 0.1.2.
+## Teste esperado
 
-## Files to add/replace
+1. Importe sua própria `Lossless.dll` na configuração de Frame Generation.
+2. Aguarde aparecer que os shaders foram preparados.
+3. Ative FG para o jogo.
+4. Abra o jogo.
+5. Na primeira execução, permita sobreposição e aceite a captura de tela do Android.
+6. Observe o overlay do backend. Se o hardware aceitar o pipeline completo, ele deve indicar atividade de LSFG e FPS reais/apresentados.
+
+## Importante
+
+Este pacote é **código-fonte/patch de teste**. O primeiro teste real ainda é o GitHub Actions compilar o APK e depois testar no aparelho. Não considere o Frame Generation confirmado até o APK compilar e o overlay mostrar frames gerados no jogo.
+
+O backend LSFG-Android documenta Frame Generation completo principalmente em GPUs Adreno 7xx ou mais novas; hardware sem as extensões Vulkan exigidas pode cair em modo de espelhamento/captura sem interpolação.
+
+O Wudroid não inclui, baixa ou distribui `Lossless.dll`. O arquivo continua sendo fornecido pelo próprio usuário.
+
+## Arquivos novos/alterados desta correção
+
 - `wudroid-overlay/WudroidFrameGeneration.kt`
 - `wudroid-overlay/WudroidFrameGenerationUi.kt`
+- `wudroid-overlay/WudroidLsfgCapture.kt`
 - `wudroid-overlay/WudroidFrameGenerationNative.kt`
 - `wudroid-overlay/WudroidFrameGenerationNative.cpp`
 - `wudroid-overlay/apply-v011b-framegen-native.py`
+- `wudroid-overlay/apply-v011c-lsfg-capture.py`
 - `.github/workflows/build-wudroid.yml`
+
+Os demais arquivos do ZIP são mantidos porque fazem parte da sequência de patches da 0.1.1 já usada pelo repositório.

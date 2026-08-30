@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +33,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import info.cemu.cemu.nativeinterface.NativeGameTitles
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val FrameGenBlue = Color(0xFF00B8F5)
 private val FrameGenMuted = Color(0xFF9DA8B4)
@@ -44,6 +48,7 @@ fun WudroidFrameGenerationDialog(
     val context = LocalContext.current
     val titleId = game.titleId
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
 
     var config by remember {
         mutableStateOf(WudroidFrameGenerationManager.gameConfig(context, titleId))
@@ -54,22 +59,35 @@ fun WudroidFrameGenerationDialog(
     var nativeState by remember {
         mutableStateOf(WudroidFrameGenerationManager.nativeState())
     }
+    var importing by remember { mutableStateOf(false) }
 
     val dllPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val result = WudroidFrameGenerationManager.importLosslessDll(context, uri)
-        result.onSuccess {
-            dllStatus = it
-            nativeState = WudroidFrameGenerationManager.nativeState()
-            Toast.makeText(context, "Lossless.dll importado", Toast.LENGTH_SHORT).show()
-        }.onFailure {
-            Toast.makeText(
-                context,
-                "Falha: ${it.message ?: "DLL inválida"}",
-                Toast.LENGTH_LONG,
-            ).show()
+        importing = true
+        dllStatus = "Importando DLL e preparando shaders SPIR-V…"
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                WudroidFrameGenerationManager.importLosslessDll(context, uri)
+            }
+            importing = false
+            result.onSuccess {
+                dllStatus = it
+                nativeState = WudroidFrameGenerationManager.nativeState()
+                Toast.makeText(
+                    context,
+                    "Lossless.dll pronto para Frame Generation",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }.onFailure {
+                dllStatus = WudroidFrameGenerationManager.losslessDllInfo(context)
+                Toast.makeText(
+                    context,
+                    "Falha: ${it.message ?: "DLL inválida"}",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
         }
     }
 
@@ -146,6 +164,7 @@ fun WudroidFrameGenerationDialog(
                 Text(dllStatus, color = FrameGenMuted, fontSize = 12.sp)
                 Row(modifier = Modifier.fillMaxWidth()) {
                     TextButton(
+                        enabled = !importing,
                         onClick = {
                             dllPicker.launch(
                                 arrayOf(
@@ -156,10 +175,11 @@ fun WudroidFrameGenerationDialog(
                             )
                         }
                     ) {
-                        Text("Importar Lossless.dll")
+                        Text(if (importing) "Preparando…" else "Importar Lossless.dll")
                     }
                     if (WudroidFrameGenerationManager.hasLosslessDll(context)) {
                         TextButton(
+                            enabled = !importing,
                             onClick = {
                                 WudroidFrameGenerationManager.removeLosslessDll(context)
                                 dllStatus = WudroidFrameGenerationManager.losslessDllInfo(context)
@@ -273,9 +293,9 @@ fun WudroidFrameGenerationDialog(
 
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Teste 1b: o popup agora rola corretamente e o motor LSFG-VK é " +
-                        "linkado ao APK. O status não marca frames como gerados até o " +
-                        "hook de apresentação Vulkan do Cemu estar ativo.",
+                    "Teste 2 da 0.1.1: usa o backend Android real do LSFG. Ao abrir o " +
+                        "jogo, o Wudroid solicita permissão de sobreposição e captura de tela; " +
+                        "o overlay mostra FPS real e FPS total para confirmar a geração.",
                     color = FrameGenMuted,
                     fontSize = 11.sp,
                 )

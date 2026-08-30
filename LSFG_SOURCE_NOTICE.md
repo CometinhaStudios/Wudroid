@@ -1,13 +1,17 @@
 # LSFG / Lossless Scaling source notice
 
-Wudroid does **not** ship, download, or redistribute `Lossless.dll` or extracted proprietary shader blobs.
+Wudroid **não inclui, baixa nem redistribui `Lossless.dll`**, nem inclui blobs proprietários extraídos dela. O usuário seleciona sua própria cópia.
 
-The user must select their own legitimately obtained copy.
+## Backend usado neste teste
 
-Native frame-generation library used by this Test 1b build:
-- FrankBarretta/lsfg-vk-android, `release` branch — MIT license, derived from PancakeTAS/lsfg-vk.
+O build da `Wudroid 0.1.1 — FrameGen Capture — Test 2` busca o repositório público:
 
-Implementation reference used for the Wudroid renderer plan:
-- Eden Emulator PR #4263, LSFG-VK Android/Vulkan implementation (GPL-3.0-or-later files).
+- `FrankBarretta/LSFG-Android`
+  - submódulo `LSFG-Android-Application`
+  - submódulo `lsfg-vk-android`
 
-This package only links the MIT framegen engine and adds Wudroid-specific JNI/UI preparation. It does not copy Eden's GPL renderer implementation into Cemu in Test 1b.
+O código de `LSFG-Android-Application` é licenciado sob GNU GPL v3 ou posterior. O script de build preserva uma cópia da licença do projeto dentro dos assets do APK gerado. As licenças e avisos dos submódulos continuam sujeitos aos respectivos repositórios upstream.
+
+O backend usa MediaProjection/AHardwareBuffer e um pipeline Vulkan próprio para executar LSFG sobre a imagem capturada e apresentar o resultado em uma sobreposição Android.
+
+O patch do Wudroid altera somente a integração necessária para incorporar o módulo ao APK e impede que o serviço relance o aplicativo quando o alvo já é a `EmulationActivity` do próprio Wudroid.

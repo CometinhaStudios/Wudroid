@@ -3,10 +3,9 @@ package info.cemu.cemu
 /**
  * Thin JNI bridge compiled into CemuAndroid.
  *
- * Test 1b does not claim that the renderer is already presenting generated
- * frames. This bridge exists so the UI can report the real native state and
- * so the next renderer patch can call the linked LSFG engine without adding
- * another Java/Kotlin API layer.
+ * Test 2 keeps this tiny Cemu-side capability probe. The real LSFG engine is
+ * provided by the embedded LSFG-Android library module and runs through the
+ * Android capture/overlay path.
  */
 object WudroidFrameGenerationNative {
     @JvmStatic

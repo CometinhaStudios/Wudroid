@@ -37,12 +37,12 @@ jobs:
           path: wudcompress-mobile
           fetch-depth: 1
 
-      - name: Checkout LSFG Vulkan framegen for Android
+      - name: Checkout LSFG Android backend
         uses: actions/checkout@v6
         with:
-          repository: FrankBarretta/lsfg-vk-android
-          ref: release
-          path: lsfg-vk-android
+          repository: FrankBarretta/LSFG-Android
+          ref: main
+          path: lsfg-android
           submodules: recursive
           fetch-depth: 1
 
@@ -60,9 +60,12 @@ jobs:
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager \
             "platforms;android-35" \
+            "platforms;android-36" \
             "build-tools;35.0.0" \
-            "ndk;26.1.10909125" \
-            "cmake;3.22.1"
+            "ndk;27.0.12077973" \
+            "ndk;29.0.14206865" \
+            "cmake;3.22.1" \
+            "cmake;3.31.1"
 
       - name: Apply Wudroid independent frontend
         shell: bash
@@ -70,9 +73,6 @@ jobs:
           set -euo pipefail
           APP="cemu-engine/src/android/app"
           JAVA="$APP/src/main/java/info/cemu/cemu"
-
-          rm -rf cemu-engine/dependencies/lsfg-vk-android
-          cp -a lsfg-vk-android cemu-engine/dependencies/lsfg-vk-android
 
           rm -f "$JAVA/MainActivity.kt" "$JAVA/MainActivity.java"
           cp wudroid-overlay/MainActivity.kt "$JAVA/MainActivity.kt"
@@ -117,6 +117,7 @@ jobs:
           cp wudroid-overlay/WudroidFrameGenerationUi.kt "$JAVA/WudroidFrameGenerationUi.kt"
           cp wudroid-overlay/WudroidFrameGenerationNative.kt "$JAVA/WudroidFrameGenerationNative.kt"
           cp wudroid-overlay/WudroidFrameGenerationNative.cpp "$APP/src/main/cpp/WudroidFrameGenerationNative.cpp"
+          cp wudroid-overlay/WudroidLsfgCapture.kt "$JAVA/WudroidLsfgCapture.kt"
           python3 wudroid-overlay/apply-graphics-touch-ui.py
           python3 wudroid-overlay/apply-touch-layout.py
           python3 wudroid-overlay/apply-v009-ui.py
@@ -130,6 +131,7 @@ jobs:
           python3 wudroid-overlay/apply-v010b-features.py
           python3 wudroid-overlay/apply-v011-framegen.py
           python3 wudroid-overlay/apply-v011b-framegen-native.py
+          python3 wudroid-overlay/apply-v011c-lsfg-capture.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -140,9 +142,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*getVersionCode\(\)', 'versionCode = 17', s)
-          s = re.sub(r'versionName\s*=\s*getVersionName\(\)',
-                     'versionName = "0.1.1b-framegen-nativeprep-test1"', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 18', s)
+          s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
+                     'versionName = "0.1.1-framegen-capture-test2"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -201,21 +203,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.1b-FrameGen-NativePrep-Test1-aligned.apk
+            "$APK" out/Wudroid-0.1.1-FrameGen-Capture-Test2-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.1b-FrameGen-NativePrep-Test1.apk \
-            out/Wudroid-0.1.1b-FrameGen-NativePrep-Test1-aligned.apk
+            --out out/Wudroid-0.1.1-FrameGen-Capture-Test2.apk \
+            out/Wudroid-0.1.1-FrameGen-Capture-Test2-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.1b-FrameGen-NativePrep-Test1.apk
+            out/Wudroid-0.1.1-FrameGen-Capture-Test2.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.1b-FrameGen-NativePrep-Test1-APK
-          path: out/Wudroid-0.1.1b-FrameGen-NativePrep-Test1.apk
+          name: Wudroid-0.1.1-FrameGen-Capture-Test2-APK
+          path: out/Wudroid-0.1.1-FrameGen-Capture-Test2.apk
           if-no-files-found: error
           compression-level: 0

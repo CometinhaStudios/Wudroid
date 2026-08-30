@@ -3,10 +3,13 @@ package info.cemu.cemu
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.lsfg.android.prefs.LsfgPreferences
+import com.lsfg.android.session.NativeBridge
 import info.cemu.cemu.nativeinterface.NativeGameTitles
 import info.cemu.cemu.nativeinterface.NativeSettings
 import java.io.File
 import java.io.RandomAccessFile
+import java.security.MessageDigest
 
 object WudroidFrameGenerationManager {
     private const val PREFS = "wudroid_frame_generation"
@@ -34,8 +37,8 @@ object WudroidFrameGenerationManager {
         val ahbSupported: Boolean,
         val engine: String,
     ) {
-        val readyForRendererIntegration: Boolean
-            get() = bridgeCompiled && ahbSupported && engine.contains("framegen linked")
+        val realLsfgBackendLoaded: Boolean
+            get() = bridgeCompiled && engine.contains("lsfg", ignoreCase = true)
     }
 
     private fun prefs(context: Context) =
@@ -46,6 +49,8 @@ object WudroidFrameGenerationManager {
 
     private fun dllFile(context: Context): File =
         File(context.filesDir, "$DLL_DIR/$DLL_NAME")
+
+    private fun shaderDir(context: Context): File = File(context.filesDir, "spirv")
 
     fun globalConfig(context: Context): Config {
         val p = prefs(context)
@@ -98,50 +103,46 @@ object WudroidFrameGenerationManager {
     fun hasLosslessDll(context: Context): Boolean =
         dllFile(context).let { it.isFile && it.length() > 0L }
 
+    fun shadersReady(context: Context): Boolean =
+        WudroidLsfgCaptureController.shadersReady(context)
+
     fun losslessDllInfo(context: Context): String {
         val file = dllFile(context)
         if (!file.isFile) return "Lossless.dll não importado"
         val mb = file.length().toDouble() / 1024.0 / 1024.0
-        return "Lossless.dll • %.1f MB".format(mb)
+        return if (shadersReady(context)) {
+            "Lossless.dll • %.1f MB • shaders preparados".format(mb)
+        } else {
+            "Lossless.dll • %.1f MB • shaders ainda não preparados".format(mb)
+        }
     }
 
     fun nativeState(): NativeState {
-        val bridge = runCatching {
-            WudroidFrameGenerationNative.isBridgeCompiled()
+        val engine = runCatching { NativeBridge.nativeVersion() }
+            .getOrElse { "LSFG Android indisponível: ${it.javaClass.simpleName}" }
+        val bridge = !engine.contains("indisponível", ignoreCase = true)
+        val ahb = runCatching {
+            WudroidFrameGenerationNative.hasAhardwareBufferSupport()
         }.getOrDefault(false)
-        val ahb = if (bridge) {
-            runCatching { WudroidFrameGenerationNative.hasAhardwareBufferSupport() }
-                .getOrDefault(false)
-        } else {
-            false
-        }
-        val engine = if (bridge) {
-            runCatching { WudroidFrameGenerationNative.lsfgEngineVersion() }
-                .getOrDefault("Bridge nativo carregado")
-        } else {
-            "Bridge nativo indisponível"
-        }
         return NativeState(bridge, ahb, engine)
     }
 
     fun backendStatusText(context: Context, config: Config): String {
         if (!config.enabled) return "Desativado"
         if (!hasLosslessDll(context)) return "Aguardando Lossless.dll"
+        if (!shadersReady(context)) return "DLL importada • preparando shaders LSFG"
 
         val state = nativeState()
-        if (!state.bridgeCompiled) return "Bridge JNI não carregado"
+        if (!state.bridgeCompiled) return "Backend LSFG Android não carregado"
         if (!state.ahbSupported) return "AHardwareBuffer GPU não suportado"
-        if (!state.readyForRendererIntegration) return "Motor LSFG ainda não linkado"
+        if (!state.realLsfgBackendLoaded) return "liblsfg-android não carregada"
 
-        // Test 1b links the real framegen engine, but the Cemu present path still
-        // needs to hand its rendered images to the LSFG chain. Do not report
-        // generated frames until that renderer hook exists.
-        return "LSFG carregado • aguardando hook do renderer"
+        return "Pronto • inicia captura LSFG ao abrir o jogo"
     }
 
     /**
-     * Copies a user-supplied Lossless.dll into private app storage.
-     * The original selected file is never modified or deleted.
+     * Copies the user's DLL to private app storage, then uses the real LSFG
+     * Android native extractor to translate its DXBC resources to SPIR-V.
      */
     fun importLosslessDll(context: Context, uri: Uri): Result<String> = runCatching {
         val name = queryDisplayName(context, uri)
@@ -180,30 +181,72 @@ object WudroidFrameGenerationManager {
             temp.delete()
         }
 
+        val cache = shaderDir(context)
+        cache.mkdirs()
+        val sha256 = sha256(target)
+        val upstreamPrefs = LsfgPreferences(context)
+        upstreamPrefs.setDll(uri.toString(), name ?: DLL_NAME)
+        upstreamPrefs.setShadersReady(false)
+
+        val extractRc = NativeBridge.extractShaders(
+            target.absolutePath,
+            sha256,
+            cache.absolutePath,
+        )
+        if (extractRc != 0) {
+            error("Falha ao extrair shaders LSFG (código $extractRc)")
+        }
+
+        val probeRc = NativeBridge.probeShaders(cache.absolutePath)
+        if (probeRc != 0) {
+            error("Shaders extraídos, mas o Vulkan recusou o cache (código $probeRc)")
+        }
+
+        upstreamPrefs.setShadersReady(true)
         losslessDllInfo(context)
     }
 
-    fun removeLosslessDll(context: Context): Boolean =
-        dllFile(context).let { !it.exists() || it.delete() }
+    fun removeLosslessDll(context: Context): Boolean {
+        WudroidLsfgCaptureController.disarm(context, stopRunning = true)
+        runCatching { LsfgPreferences(context).setShadersReady(false) }
+        runCatching { shaderDir(context).deleteRecursively() }
+        val file = dllFile(context)
+        return !file.exists() || file.delete()
+    }
 
     /**
-     * Applies the presentation requirement before boot.
-     *
-     * The LSFG engine is linked in Test 1b, but generated frames are only
-     * considered active after the Vulkan renderer hook is implemented.
+     * Arms the LSFG capture backend for the EmulationActivity that is about to
+     * start. EmulationActivity requests overlay + MediaProjection permissions
+     * after Cemu has created the game surface.
      */
     fun prepareBeforeLaunch(
         context: Context,
         game: NativeGameTitles.Game,
     ): Config {
         val config = gameConfig(context, game.titleId)
-        if (config.enabled && hasLosslessDll(context)) {
+        if (config.enabled && shadersReady(context)) {
             runCatching {
                 NativeSettings.setVsyncMode(NativeSettings.VSyncMode.DOUBLE_BUFFERING)
                 NativeSettings.saveSettings()
             }
+            WudroidLsfgCaptureController.armForNextLaunch(context, config)
+        } else {
+            WudroidLsfgCaptureController.disarm(context, stopRunning = !config.enabled)
         }
         return config
+    }
+
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(1024 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun queryDisplayName(context: Context, uri: Uri): String? =
@@ -244,8 +287,6 @@ object WudroidFrameGenerationManager {
                 return@use false
             }
 
-            // IMAGE_FILE_HEADER.Machine. Lossless.dll is normally x86-64, but
-            // the resource parser only needs a structurally valid PE image.
             val machine = raf.readUnsignedByte() or (raf.readUnsignedByte() shl 8)
             machine != 0
         }
