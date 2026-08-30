@@ -73,7 +73,10 @@ class EmulationActivity : AppCompatActivity() {
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
         // Wudroid: mouse movement emulates the right analog stick.
         if (processInputEvents && WudroidKeyboardMouse.onMouseMotion(event)) {
-            if (android.os.Build.VERSION.SDK_INT >= 26 && !window.decorView.hasPointerCapture()) {
+            if (android.os.Build.VERSION.SDK_INT >= 26 &&
+                WudroidKeyboardMouse.shouldCapturePointer() &&
+                !window.decorView.hasPointerCapture()
+            ) {
                 window.decorView.requestPointerCapture()
             }
             return true
@@ -98,8 +101,8 @@ class EmulationActivity : AppCompatActivity() {
             }
         }
 
-        // W/A/S/D are the left analog stick. Other keys continue to Cemu's
-        // InputHandler so they can be bound to emulated gamepad buttons.
+        // Keyboard keys are not hard-coded. They continue to Cemu's InputHandler
+        // and use the mappings configured in Controls -> Player.
         if (processInputEvents && WudroidKeyboardMouse.onKeyEvent(event)) {
             return true
         }
@@ -138,6 +141,7 @@ class EmulationActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         inputManager = InputDelegateManager(this)
+        WudroidKeyboardMouse.init(applicationContext)
 
         // Captured pointer events bypass normal hover dispatch on Android.
         if (android.os.Build.VERSION.SDK_INT >= 26) {

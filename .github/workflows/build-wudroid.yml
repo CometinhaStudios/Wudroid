@@ -109,6 +109,9 @@ jobs:
           cp wudroid-overlay/WudroidFrameGenerationUi.kt "$JAVA/WudroidFrameGenerationUi.kt"
           cp wudroid-overlay/WudroidShaderPreload.kt "$JAVA/WudroidShaderPreload.kt"
           cp wudroid-overlay/WudroidKeyboardMouse.kt "$JAVA/emulation/WudroidKeyboardMouse.kt"
+          mkdir -p "$JAVA/settings/input/controller"
+          cp wudroid-overlay/WudroidKeyboardMouseSettings.kt \
+            "$JAVA/settings/input/controller/WudroidKeyboardMouseSettings.kt"
           python3 wudroid-overlay/apply-graphics-touch-ui.py
           python3 wudroid-overlay/apply-touch-layout.py
           python3 wudroid-overlay/apply-v009-ui.py
@@ -123,6 +126,7 @@ jobs:
           python3 wudroid-overlay/apply-v011-framegen.py
           python3 wudroid-overlay/apply-v011e-shader-preload.py
           python3 wudroid-overlay/apply-v011f-library-input.py
+          python3 wudroid-overlay/apply-v011g-keyboard-mapping-ui.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -133,9 +137,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 20', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 21', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.1-library-input-buildfix2"', s)
+                     'versionName = "0.1.1-keyboard-mouse-mapping-test1"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -194,21 +198,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.1-LibraryFix-KeyboardMouse-BuildFix2-aligned.apk
+            "$APK" out/Wudroid-0.1.1-KeyboardMouse-Mapping-Test1-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.1-LibraryFix-KeyboardMouse-BuildFix2.apk \
-            out/Wudroid-0.1.1-LibraryFix-KeyboardMouse-BuildFix2-aligned.apk
+            --out out/Wudroid-0.1.1-KeyboardMouse-Mapping-Test1.apk \
+            out/Wudroid-0.1.1-KeyboardMouse-Mapping-Test1-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.1-LibraryFix-KeyboardMouse-BuildFix2.apk
+            out/Wudroid-0.1.1-KeyboardMouse-Mapping-Test1.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.1-LibraryFix-KeyboardMouse-BuildFix2-APK
-          path: out/Wudroid-0.1.1-LibraryFix-KeyboardMouse-BuildFix2.apk
+          name: Wudroid-0.1.1-KeyboardMouse-Mapping-Test1-APK
+          path: out/Wudroid-0.1.1-KeyboardMouse-Mapping-Test1.apk
           if-no-files-found: error
           compression-level: 0
