@@ -15,13 +15,24 @@ if not screen.exists() or not vm.exists():
 
 s = screen.read_text()
 
+def ensure_import(text: str, import_line: str) -> str:
+    if import_line in text:
+        return text
+    imports = list(re.finditer(r"^import .+$", text, re.M))
+    if not imports:
+        raise SystemExit(f"No import block found while adding {import_line}")
+    pos = imports[-1].end()
+    return text[:pos] + "\n" + import_line + text[pos:]
+
 # Wudroid's Add Folder launcher used to start a native scan immediately. The
 # screen also scans again on RESUMED because gamePathsHaveChanged() is true.
-# Remove the first scan and let the lifecycle path perform one serialized load.
-s = s.replace(
-    "NativeSettings.addGamesPath(gamesPath)\n                NativeGameTitles.reloadGameTitles()",
-    "NativeSettings.addGamesPath(gamesPath)\n"
-    "                // Wudroid: the RESUMED lifecycle performs the single game scan.",
+# Remove ONLY the immediate reload after addGamesPath. This is intentionally
+# idempotent because older Wudroid test builds may have already removed it.
+s = re.sub(
+    r"(NativeSettings\.addGamesPath\(gamesPath\)\s*)NativeGameTitles\.reloadGameTitles\(\)",
+    r"\1// Wudroid: game scan is deferred to the RESUMED lifecycle.",
+    s,
+    count=1,
 )
 
 # Give SAF a short moment to settle after returning from the document picker.
@@ -39,14 +50,19 @@ new = '''LaunchedEffect(lifecycleState) {
 if old in s:
     s = s.replace(old, new, 1)
 
+# delay(300) lives in GamesListScreen, so guarantee its import too.
+if "delay(300)" in s:
+    s = ensure_import(s, "import kotlinx.coroutines.delay")
+
 screen.write_text(s)
 
 v = vm.read_text()
-if "import kotlinx.coroutines.Job" not in v:
-    anchor = "import kotlinx.coroutines.flow.MutableStateFlow"
-    if anchor not in v:
-        raise SystemExit("GamesListViewModel import anchor missing")
-    v = v.replace(anchor, "import kotlinx.coroutines.Job\nimport kotlinx.coroutines.delay\nimport kotlinx.coroutines.launch\n" + anchor, 1)
+for imp in (
+    "import kotlinx.coroutines.Job",
+    "import kotlinx.coroutines.delay",
+    "import kotlinx.coroutines.launch",
+):
+    v = ensure_import(v, imp)
 
 if "private var refreshJob: Job? = null" not in v:
     anchor = "private var gamePaths = NativeSettings.getGamesPaths().toSet()"
@@ -152,18 +168,35 @@ if "WudroidKeyboardMouse.reset()" not in a.split("override fun onPause()", 1)[-1
 activity.write_text(a)
 
 # Verification
-checks = {
-    screen: ["delay(300)", "RESUMED lifecycle performs the single game scan"],
-    vm: ["refreshJob?.cancel()", "delay(250)", "NativeGameTitles.reloadGameTitles()"],
-    activity: ["WudroidKeyboardMouse.onMouseMotion(event)", "WudroidKeyboardMouse.onKeyEvent(event)", "setOnCapturedPointerListener"],
-}
-for file, needles in checks.items():
-    text = file.read_text()
-    for needle in needles:
-        if needle not in text:
-            raise SystemExit(f"Verification failed in {file}: {needle}")
+# Do not verify comments/formatting: previous Wudroid builds can already have
+# equivalent code. Verify behavior instead.
+screen_text = screen.read_text()
+vm_text = vm.read_text()
+activity_text = activity.read_text()
 
-print("Wudroid 0.1.1 LibraryFix + KeyboardMouse Test1 applied")
+# There must not be an immediate native reload right after adding the folder.
+if re.search(
+    r"NativeSettings\.addGamesPath\(gamesPath\)[\s\S]{0,220}?NativeGameTitles\.reloadGameTitles\(\)",
+    screen_text,
+):
+    raise SystemExit("Verification failed: Add Folder still performs an immediate native game scan")
+
+if "gamesListViewModel.refreshGames()" not in screen_text:
+    raise SystemExit("Verification failed: GamesListScreen has no lifecycle refresh path")
+
+for needle in ("refreshJob?.cancel()", "delay(250)", "NativeGameTitles.reloadGameTitles()"):
+    if needle not in vm_text:
+        raise SystemExit(f"Verification failed in {vm}: {needle}")
+
+for needle in (
+    "WudroidKeyboardMouse.onMouseMotion(event)",
+    "WudroidKeyboardMouse.onKeyEvent(event)",
+    "setOnCapturedPointerListener",
+):
+    if needle not in activity_text:
+        raise SystemExit(f"Verification failed in {activity}: {needle}")
+
+print("Wudroid 0.1.1 LibraryFix + KeyboardMouse BuildFix2 applied")
 print("- game folder scan: single/debounced native reload")
 print("- WASD: left analog stick")
 print("- mouse: right analog stick with pointer capture")
