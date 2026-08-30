@@ -99,8 +99,8 @@ if "WudroidKeyboardMouse.onMouseMotion(event)" not in a:
         r'        }\n\n        \2'
     )
     a, n = pattern.subn(repl, a, count=1)
-    if n == 0:
-        raise SystemExit("EmulationActivity onGenericMotionEvent anchor missing")
+    if n == 0 and "WudroidKeyboardMouse.onMouseMotion(event)" not in a:
+        raise SystemExit("EmulationActivity mouse hook anchor missing")
 
 # Keyboard: WASD -> left stick. Other keys keep going to InputHandler so the
 # existing controller mapping can bind them to A/B/X/Y/L/R/etc.
@@ -123,8 +123,8 @@ if "WudroidKeyboardMouse.onKeyEvent(event)" not in a:
         r'        }\n\n        \2'
     )
     a, n = pattern.subn(repl, a, count=1)
-    if n == 0:
-        raise SystemExit("EmulationActivity dispatchKeyEvent anchor missing")
+    if n == 0 and "WudroidKeyboardMouse.onKeyEvent(event)" not in a:
+        raise SystemExit("EmulationActivity keyboard hook anchor missing")
 
 # Captured pointer events are delivered straight to the decor view.
 if "setOnCapturedPointerListener" not in a:

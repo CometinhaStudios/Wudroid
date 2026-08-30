@@ -25,11 +25,10 @@ import info.cemu.cemu.emulation.input.DeviceMotionHandler
 import info.cemu.cemu.emulation.input.HotkeyManager
 import info.cemu.cemu.emulation.input.InputHandler
 import info.cemu.cemu.emulation.input.NativeInputDeviceListener
-import info.cemu.cemu.graphics.WudroidVulkanX
+import info.cemu.cemu.nativeinterface.NativeEmulation
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlin.system.exitProcess
 
 private class InputDelegateManager(context: Context) {
     private val nativeInputDeviceListener = NativeInputDeviceListener(context)
@@ -70,17 +69,49 @@ private class InputDelegateManager(context: Context) {
 class EmulationActivity : AppCompatActivity() {
     private lateinit var inputManager: InputDelegateManager
     private var processInputEvents = true
-    private var vulkanXActive = false
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
-        if (processInputEvents && InputHandler.onMotionEvent(event)) return true
+        // Wudroid: mouse movement emulates the right analog stick.
+        if (processInputEvents && WudroidKeyboardMouse.onMouseMotion(event)) {
+            if (android.os.Build.VERSION.SDK_INT >= 26 && !window.decorView.hasPointerCapture()) {
+                window.decorView.requestPointerCapture()
+            }
+            return true
+        }
+
+        if (processInputEvents && InputHandler.onMotionEvent(event)) {
+            return true
+        }
+
         return super.onGenericMotionEvent(event)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         HotkeyManager.onKeyEvent(event)
-        if (processInputEvents && InputHandler.onKeyEvent(event)) return true
-        if (event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE && event.isFromPhysicalController()) return true
+
+        // ESC releases a captured mouse before it reaches the emulated pad.
+        if (event.keyCode == KeyEvent.KEYCODE_ESCAPE && event.action == KeyEvent.ACTION_DOWN) {
+            if (android.os.Build.VERSION.SDK_INT >= 26 && window.decorView.hasPointerCapture()) {
+                window.decorView.releasePointerCapture()
+                WudroidKeyboardMouse.reset()
+                return true
+            }
+        }
+
+        // W/A/S/D are the left analog stick. Other keys continue to Cemu's
+        // InputHandler so they can be bound to emulated gamepad buttons.
+        if (processInputEvents && WudroidKeyboardMouse.onKeyEvent(event)) {
+            return true
+        }
+
+        if (processInputEvents && InputHandler.onKeyEvent(event)) {
+            return true
+        }
+
+        if (event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE && event.isFromPhysicalController()) {
+            return true
+        }
+
         return super.dispatchKeyEvent(event)
     }
 
@@ -88,24 +119,43 @@ class EmulationActivity : AppCompatActivity() {
         val extras = intent.extras
         val data = intent.data
         var launchPath: String? = null
-        if (extras != null) launchPath = extras.getString(EXTRA_LAUNCH_PATH)
-        if (launchPath == null && data != null) launchPath = data.toString()
-        if (launchPath == null) throw RuntimeException("launchPath is null")
+        if (extras != null) {
+            launchPath = extras.getString(EXTRA_LAUNCH_PATH)
+        }
+
+        if (launchPath == null && data != null) {
+            launchPath = data.toString()
+        }
+
+        if (launchPath == null) {
+            throw RuntimeException("launchPath is null")
+        }
+
         return launchPath
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val gamePath = getGamePath()
-        vulkanXActive = WudroidVulkanX.prepare(this, intent, gamePath)
-        if (vulkanXActive) WudroidVulkanX.markStage(this, "emulation_activity_create")
-
         inputManager = InputDelegateManager(this)
+
+        // Captured pointer events bypass normal hover dispatch on Android.
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            window.decorView.setOnCapturedPointerListener { _, event ->
+                if (processInputEvents) {
+                    WudroidKeyboardMouse.onMouseMotion(event)
+                } else {
+                    false
+                }
+            }
+        }
+
         setupHotkeys()
+
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setFullscreen()
 
+        val gamePath = getGamePath()
         setContent {
             TranslatableContent {
                 ActivityContent {
@@ -118,12 +168,13 @@ class EmulationActivity : AppCompatActivity() {
                 }
             }
         }
-
-        if (vulkanXActive) WudroidVulkanX.markStage(this, "compose_attached")
     }
 
     override fun onPause() {
-        if (vulkanXActive) WudroidVulkanX.markStage(this, "activity_pause")
+        WudroidKeyboardMouse.reset()
+        if (android.os.Build.VERSION.SDK_INT >= 26 && window.decorView.hasPointerCapture()) {
+            window.decorView.releasePointerCapture()
+        }
         super.onPause()
         inputManager.onPause()
     }
@@ -131,7 +182,6 @@ class EmulationActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         inputManager.onResume(display.rotation)
-        if (vulkanXActive) WudroidVulkanX.markStage(this, "activity_resume")
     }
 
     private fun setupHotkeys() {
@@ -153,9 +203,9 @@ class EmulationActivity : AppCompatActivity() {
     }
 
     private fun onQuit() {
-        if (vulkanXActive) WudroidVulkanX.cleanExit(this)
+        WudroidKeyboardMouse.reset()
+        NativeEmulation.stopEmulation()
         finish()
-        exitProcess(0)
     }
 
     companion object {
