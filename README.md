@@ -1,6 +1,6 @@
-# Wudroid 0.1.1 — FrameGen Capture — Test 2
+# Wudroid 0.1.1 — FrameGen Capture — Test 3
 
-Correção incremental da **0.1.1**. A versão pública continua `0.1.1`; `Test 2` identifica apenas esta tentativa de correção do Frame Generation.
+Correção incremental da **0.1.1**. A versão pública continua `0.1.1`; `Test 3` identifica apenas esta tentativa de correção do Frame Generation.
 
 ## O que muda neste teste
 
@@ -43,3 +43,10 @@ O Wudroid não inclui, baixa ou distribui `Lossless.dll`. O arquivo continua sen
 - `.github/workflows/build-wudroid.yml`
 
 Os demais arquivos do ZIP são mantidos porque fazem parte da sequência de patches da 0.1.1 já usada pelo repositório.
+
+
+## Test3 build fix
+
+- fixes the LSFG embed Gradle plugin block that failed during `Check Wudroid frontend Kotlin`;
+- uses explicit plugin ids instead of `libs.plugins.*` accessors in the external LSFG module;
+- keeps the Wudroid product version at **0.1.1**; only the test/build identifier changes.

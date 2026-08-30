@@ -19,9 +19,9 @@ if not lsfg_app.exists():
 # ---------------------------------------------------------------------------
 module_gradle = lsfg_app / "build.gradle.kts"
 module_gradle.write_text(r'''plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    id("com.android.library")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -111,6 +111,20 @@ dependencies {
     implementation("com.github.topjohnwu.libsu:service:5.3.0")
 }
 ''')
+
+# Test3: external modules cannot rely on generated version-catalog accessors
+# from their original standalone build. Use plugin ids already declared by
+# Cemu's root build.gradle.kts and verify that no alias slipped back in.
+check = module_gradle.read_text()
+if 'alias(libs.plugins' in check:
+    raise SystemExit('LSFG embed Gradle still contains version-catalog plugin aliases')
+for plugin_id in (
+    'id("com.android.library")',
+    'id("org.jetbrains.kotlin.android")',
+    'id("org.jetbrains.kotlin.plugin.compose")',
+):
+    if plugin_id not in check:
+        raise SystemExit(f'Missing LSFG embed plugin: {plugin_id}')
 
 # Library manifest: keep permissions/components required by the real capture
 # backend, but never replace CemuApplication and never add a second launcher.
