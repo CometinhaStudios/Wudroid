@@ -154,6 +154,7 @@ object WudroidGameGraphicsProfiles {
         WudroidResolutionManager.applyForGame(context, game, scale)
         WudroidAntiAliasingManager.applyForGame(context, game, getAa(context, titleId))
         WudroidFrameGenerationManager.prepareBeforeLaunch(context, game)
+        WudroidShaderPreload.prepareBeforeLaunch(context, game)
 
         val engine = getEngine(context, titleId)
         return if (engine == USE_GLOBAL) {
@@ -262,11 +263,8 @@ fun WudroidPerGameGraphicsDialog(
                             Text(
                                 when {
                                     frameGen.useGlobal -> "Usando configuração global"
-                                    frameGen.enabled &&
-                                        WudroidFrameGenerationManager.hasLosslessDll(context) ->
-                                        "Ativado • ${frameGen.multiplier}x"
-                                    frameGen.enabled -> "Ativado • Lossless.dll não importado"
-                                    else -> "Desativado"
+                                    frameGen.enabled -> "Ativado"
+                                    else -> "Desativado temporariamente"
                                 },
                                 color = ProfileMuted,
                                 fontSize = 12.sp,
