@@ -126,7 +126,7 @@ jobs:
           python3 wudroid-overlay/apply-v011-framegen.py
           python3 wudroid-overlay/apply-v011e-shader-preload.py
           python3 wudroid-overlay/apply-v011f-library-input.py
-          python3 wudroid-overlay/apply-v011g-keyboard-mapping-ui.py
+          python3 wudroid-overlay/apply-v011h-full-controller-ui.py
 
           python3 - <<'PY'
           from pathlib import Path
