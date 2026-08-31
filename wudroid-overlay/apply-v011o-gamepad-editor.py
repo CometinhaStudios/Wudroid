@@ -109,7 +109,7 @@ if editor_call_count != 1:
     raise SystemExit('EditInputsLayout call region missing')
 
 editor_fn_re = re.compile(
-    r'''@Composable\nprivate fun EditInputsLayout\(.*?\n\}\n(?=@Composable\nprivate fun EmulationSideMenuContent)''',
+    r'''@Composable\nprivate fun EditInputsLayout\(.*?\n\}\n(?=@Composable\nprivate fun )''',
     re.S,
 )
 new_editor_fn = r'''@Composable
@@ -194,7 +194,7 @@ private fun EditInputsLayout(
 '''
 screen, editor_fn_count = editor_fn_re.subn(new_editor_fn, screen, count=1)
 if editor_fn_count != 1:
-    raise SystemExit('EditInputsLayout function region missing')
+    raise SystemExit('EditInputsLayout function region missing (function itself not found)')
 
 # ---------------------------------------------------------------------------
 # ViewModel: persist the chosen transparency only when editor is concluded.
