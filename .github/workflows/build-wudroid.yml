@@ -131,6 +131,7 @@ jobs:
           python3 wudroid-overlay/apply-v011j-original-sidebar-interaction.py
           python3 wudroid-overlay/apply-v011k-eden-dual-menu.py
           python3 wudroid-overlay/apply-v011l-right-quick-swipe-fix.py
+          python3 wudroid-overlay/apply-v011m-right-edge-activity-bridge.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -141,9 +142,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 24', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 25', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.1-eden-dual-menu-right-swipe-fix-test4"', s)
+                     'versionName = "0.1.1-eden-dual-menu-right-swipe-bridge-test5"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
