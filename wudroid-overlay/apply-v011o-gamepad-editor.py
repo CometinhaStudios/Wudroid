@@ -297,20 +297,104 @@ if editor_fn_count != 1:
 
 # ---------------------------------------------------------------------------
 # ViewModel: persist the chosen transparency only when editor is concluded.
+# BuildFix3: do NOT depend on the exact formatting/body of
+# saveInputOverlayRectangles. Locate the real Kotlin function structurally and
+# append the new method after its closing brace.
 # ---------------------------------------------------------------------------
-vm_anchor = '''    fun saveInputOverlayRectangles(inputOverlayRectMap: Map<OverlayInputConfig, InputOverlayRect>) {
-        viewModelScope.launch {
-            dataStore.updateData {
-                val overlaySettings =
-                    it.inputOverlaySettings.copy(inputOverlayRectMap = inputOverlayRectMap)
-                it.copy(inputOverlaySettings = overlaySettings)
-            }
-        }
-    }
-'''
-if vm_anchor not in viewmodel:
-    raise SystemExit('saveInputOverlayRectangles anchor missing')
-vm_extra = vm_anchor + '''
+def find_kotlin_function_end(text: str, function_name: str):
+    match = re.search(
+        r"(?m)^[ \t]*(?:private[ \t]+)?fun[ \t]+" + re.escape(function_name) + r"[ \t]*\(",
+        text,
+    )
+    if not match:
+        return None
+
+    brace = text.find("{", match.end())
+    if brace < 0:
+        return None
+
+    depth = 0
+    i = brace
+    in_string = False
+    in_char = False
+    escape = False
+    line_comment = False
+    block_comment = False
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+
+        if line_comment:
+            if ch == "\n":
+                line_comment = False
+            i += 1
+            continue
+        if block_comment:
+            if ch == "*" and nxt == "/":
+                block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            i += 1
+            continue
+        if in_char:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == "'":
+                in_char = False
+            i += 1
+            continue
+
+        if ch == "/" and nxt == "/":
+            line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            block_comment = True
+            i += 2
+            continue
+        if ch == '"':
+            in_string = True
+            i += 1
+            continue
+        if ch == "'":
+            in_char = True
+            i += 1
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return None
+
+if 'fun saveInputOverlayAlpha(' not in viewmodel:
+    vm_end = find_kotlin_function_end(viewmodel, 'saveInputOverlayRectangles')
+    if vm_end is None:
+        candidates = [
+            line.strip()
+            for line in viewmodel.splitlines()
+            if 'InputOverlay' in line or 'save' in line
+        ]
+        raise SystemExit(
+            'saveInputOverlayRectangles function not found structurally. Candidates: '
+            + repr(candidates[:30])
+        )
+
+    vm_extra = '''
+
     fun saveInputOverlayAlpha(alpha: Int) {
         viewModelScope.launch {
             dataStore.updateData {
@@ -320,7 +404,7 @@ vm_extra = vm_anchor + '''
         }
     }
 '''
-viewmodel = viewmodel.replace(vm_anchor, vm_extra, 1)
+    viewmodel = viewmodel[:vm_end] + vm_extra + viewmodel[vm_end:]
 
 # ---------------------------------------------------------------------------
 # InputOverlaySurfaceView:
