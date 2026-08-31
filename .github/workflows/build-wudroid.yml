@@ -129,6 +129,7 @@ jobs:
           python3 wudroid-overlay/apply-v011h-full-controller-ui.py
           python3 wudroid-overlay/apply-v011i-original-sidebar-theme.py
           python3 wudroid-overlay/apply-v011j-original-sidebar-interaction.py
+          python3 wudroid-overlay/apply-v011k-eden-dual-menu.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -139,9 +140,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 23', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 24', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.1-original-sidebar-interaction-test2"', s)
+                     'versionName = "0.1.1-eden-dual-menu-test3"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -200,21 +201,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.1-OriginalSidebar-Interaction-Test2-aligned.apk
+            "$APK" out/Wudroid-0.1.1-Eden-DualMenu-Test3-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.1-OriginalSidebar-Interaction-Test2.apk \
-            out/Wudroid-0.1.1-OriginalSidebar-Interaction-Test2-aligned.apk
+            --out out/Wudroid-0.1.1-Eden-DualMenu-Test3.apk \
+            out/Wudroid-0.1.1-Eden-DualMenu-Test3-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.1-OriginalSidebar-Interaction-Test2.apk
+            out/Wudroid-0.1.1-Eden-DualMenu-Test3.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.1-OriginalSidebar-Interaction-Test2-APK
-          path: out/Wudroid-0.1.1-OriginalSidebar-Interaction-Test2.apk
+          name: Wudroid-0.1.1-Eden-DualMenu-Test3-APK
+          path: out/Wudroid-0.1.1-Eden-DualMenu-Test3.apk
           if-no-files-found: error
           compression-level: 0
