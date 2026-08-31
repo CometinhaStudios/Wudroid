@@ -108,10 +108,107 @@ screen, editor_call_count = old_editor_call_re.subn(new_editor_call, screen, cou
 if editor_call_count != 1:
     raise SystemExit('EditInputsLayout call region missing')
 
-editor_fn_re = re.compile(
-    r'''@Composable\nprivate fun EditInputsLayout\(.*?\n\}\n(?=@Composable\nprivate fun )''',
-    re.S,
-)
+# BuildFix2: locate the Kotlin function structurally instead of assuming what
+# composable comes immediately after it. Previous builds changed the order of
+# helper composables, so the old regex could see the call but miss the function.
+def replace_kotlin_function(text: str, function_name: str, replacement: str):
+    match = re.search(r"(?m)^[ \t]*(?:private[ \t]+)?fun[ \t]+" + re.escape(function_name) + r"[ \t]*\(", text)
+    if not match:
+        return text, 0
+
+    # Include @Composable and any immediately-adjacent annotations in the
+    # replacement when they belong to this function.
+    start = match.start()
+    line_start = text.rfind("\n", 0, start) + 1
+    scan = line_start
+    while scan > 0:
+        prev_end = scan - 1
+        prev_start = text.rfind("\n", 0, prev_end) + 1
+        prev_line = text[prev_start:prev_end].strip()
+        if prev_line.startswith("@"):
+            start = prev_start
+            scan = prev_start
+            continue
+        if prev_line == "":
+            scan = prev_start
+            continue
+        break
+
+    brace = text.find("{", match.end())
+    if brace < 0:
+        return text, 0
+
+    depth = 0
+    i = brace
+    in_string = False
+    in_char = False
+    escape = False
+    line_comment = False
+    block_comment = False
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+
+        if line_comment:
+            if ch == "\n":
+                line_comment = False
+            i += 1
+            continue
+        if block_comment:
+            if ch == "*" and nxt == "/":
+                block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            i += 1
+            continue
+        if in_char:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == "'":
+                in_char = False
+            i += 1
+            continue
+
+        if ch == "/" and nxt == "/":
+            line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            block_comment = True
+            i += 2
+            continue
+        if ch == '"':
+            in_string = True
+            i += 1
+            continue
+        if ch == "'":
+            in_char = True
+            i += 1
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                if end < len(text) and text[end] == "\n":
+                    end += 1
+                return text[:start] + replacement + text[end:], 1
+        i += 1
+
+    return text, 0
+
 new_editor_fn = r'''@Composable
 private fun EditInputsLayout(
     alpha: Float,
@@ -192,9 +289,11 @@ private fun EditInputsLayout(
     }
 }
 '''
-screen, editor_fn_count = editor_fn_re.subn(new_editor_fn, screen, count=1)
+screen, editor_fn_count = replace_kotlin_function(screen, "EditInputsLayout", new_editor_fn)
 if editor_fn_count != 1:
-    raise SystemExit('EditInputsLayout function region missing (function itself not found)')
+    # Debug output is intentionally useful in Actions if upstream changes again.
+    candidates = [line.strip() for line in screen.splitlines() if "EditInputs" in line]
+    raise SystemExit("EditInputsLayout function not found structurally. Candidates: " + repr(candidates[:20]))
 
 # ---------------------------------------------------------------------------
 # ViewModel: persist the chosen transparency only when editor is concluded.
