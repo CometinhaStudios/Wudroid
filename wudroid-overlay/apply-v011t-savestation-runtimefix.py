@@ -114,21 +114,94 @@ if 'Java_info_cemu_cemu_nativeinterface_NativeEmulation_isTitleRunning' not in n
 
 # ViewModel initialization becomes process-session aware. Systems/renderer are
 # initialized once; same-game return only reuses and resumes the live title.
-old_init = '''    fun initializeEmulation() {
-        if (_isEmulationInitialized.value || emulationInitializationJob != null) {
-            return
-        }
-        emulationInitializationJob = viewModelScope.launch {
-            prepareTitle()
-                .bind { initializeSystems() }
-                .bind { initializeRenderer() }
-                .bind { launchTitle() }
-                .onError { _emulationError.value = it }
+#
+# WUDROID_SAVESTATION_TEST12_BUILDFIX1:
+# Do not match the whole upstream function byte-for-byte. Earlier Wudroid
+# patches may insert functions/whitespace in EmulationViewModel.kt while the
+# real initializeEmulation() body is still valid. Locate it structurally by
+# name and balanced braces, then replace only that function region.
+def replace_kotlin_function(text: str, function_name: str, replacement: str):
+    match = re.search(
+        r"(?m)^[ \t]*(?:private[ \t]+)?(?:suspend[ \t]+)?fun[ \t]+" + re.escape(function_name) + r"[ \t]*\(",
+        text,
+    )
+    if not match:
+        return text, 0
 
-            _isEmulationInitialized.value = true
-        }
-    }
-'''
+    start = match.start()
+    brace = text.find("{", match.end())
+    if brace < 0:
+        return text, 0
+
+    depth = 0
+    i = brace
+    in_string = False
+    in_char = False
+    escape = False
+    line_comment = False
+    block_comment = False
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+
+        if line_comment:
+            if ch == "\n":
+                line_comment = False
+            i += 1
+            continue
+        if block_comment:
+            if ch == "*" and nxt == "/":
+                block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            i += 1
+            continue
+        if in_char:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == "'":
+                in_char = False
+            i += 1
+            continue
+
+        if ch == "/" and nxt == "/":
+            line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            block_comment = True
+            i += 2
+            continue
+        if ch == '"':
+            in_string = True
+            i += 1
+            continue
+        if ch == "'":
+            in_char = True
+            i += 1
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                return text[:start] + replacement.rstrip() + text[end:], 1
+        i += 1
+
+    return text, 0
+
 new_init = '''    private suspend fun initializeWudroidSystemsOnce(): Either<Unit, NativeError> {
         if (WudroidEmulationSession.systemsInitialized) return Success(Unit)
         return initializeSystems().fold(
@@ -190,9 +263,13 @@ new_init = '''    private suspend fun initializeWudroidSystemsOnce(): Either<Uni
         }
     }
 '''
-if old_init not in viewmodel:
-    raise SystemExit('EmulationViewModel initializeEmulation anchor missing')
-viewmodel = viewmodel.replace(old_init, new_init, 1)
+viewmodel, init_count = replace_kotlin_function(viewmodel, "initializeEmulation", new_init)
+if init_count != 1:
+    candidates = [line.strip() for line in viewmodel.splitlines() if "initializeEmulation" in line]
+    raise SystemExit(
+        "EmulationViewModel initializeEmulation function not found structurally. "
+        + "Candidates: " + repr(candidates[:20])
+    )
 
 # ---------------------------------------------------------------------------
 # 3) Capture the actual game SurfaceView for slot thumbnails.
@@ -700,7 +777,7 @@ for path, needles in checks.items():
 if 'exitProcess(0)' in activity_path.read_text():
     raise SystemExit('Test12 regression: EmulationActivity still kills process on normal quit')
 
-print('Wudroid 0.1.1 Save Station Test12 applied')
+print('Wudroid 0.1.1 Save Station Test12 BuildFix1 applied')
 print('- quick load old-session message simplified to Ainda não tem nada salvo')
 print('- leaving emulation preserves the native Cemu session instead of killing process')
 print('- returning to same game reattaches/resumes live title')
