@@ -45,7 +45,88 @@ def find_function_region(text: str, function_name: str):
             continue
         break
 
-    brace = text.find("{", match.end())
+    # Find the REAL function-body brace. Kotlin parameters can contain
+    # default lambdas such as `onEditAlphaFinished: (Int) -> Unit = {}`.
+    # The old Test8 parser mistook that `{}` for the function body and
+    # replaced only the signature, leaving the old AndroidView body behind.
+    # First walk the complete balanced parameter list, then find the body.
+    paren = text.find("(", match.start(), match.end())
+    if paren < 0:
+        return None
+
+    pdepth = 0
+    i = paren
+    in_string = False
+    in_char = False
+    escape = False
+    line_comment = False
+    block_comment = False
+    signature_end = None
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+
+        if line_comment:
+            if ch == "\n":
+                line_comment = False
+            i += 1
+            continue
+        if block_comment:
+            if ch == "*" and nxt == "/":
+                block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            i += 1
+            continue
+        if in_char:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == "'":
+                in_char = False
+            i += 1
+            continue
+
+        if ch == "/" and nxt == "/":
+            line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            block_comment = True
+            i += 2
+            continue
+        if ch == '"':
+            in_string = True
+            i += 1
+            continue
+        if ch == "'":
+            in_char = True
+            i += 1
+            continue
+
+        if ch == "(":
+            pdepth += 1
+        elif ch == ")":
+            pdepth -= 1
+            if pdepth == 0:
+                signature_end = i + 1
+                break
+        i += 1
+
+    if signature_end is None:
+        return None
+
+    brace = text.find("{", signature_end)
     if brace < 0:
         return None
 
@@ -686,6 +767,15 @@ fun InputOverlaySurface(
 overlay, count = replace_function(overlay, 'InputOverlaySurface', new_surface_fn)
 if count != 1:
     raise SystemExit('Test8 InputOverlaySurface composable missing')
+
+# BuildFix1 regression guard: the old parser stopped at the default `{}`
+# lambda in the parameter list and left a second stale AndroidView body.
+# After a correct replacement there must be exactly one composable signature
+# and one factory call using the new selection callback.
+if overlay.count('fun InputOverlaySurface(') != 1:
+    raise SystemExit('BuildFix1 verification: duplicate InputOverlaySurface function remains')
+if overlay.count('onWudroidSelectionChangedListener = onEditorSelectionChanged') != 2:
+    raise SystemExit('BuildFix1 verification: InputOverlaySurface bridge body is incomplete')
 
 screen_path.write_text(screen)
 overlay_path.write_text(overlay)
