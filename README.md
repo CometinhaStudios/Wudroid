@@ -9,3 +9,6 @@
 
 ## Gamepad Editor Test8
 Adds collapsible editor chrome and individual touch-control sizing on top of RobustFix2.
+
+## Save Station Test11
+Test11 adiciona a primeira UI funcional de 6 slots (3x2) em cima do Quick State Test10 validado. Veja `README-SAVESTATION-TEST11.md`.
