@@ -72,6 +72,7 @@ jobs:
           mkdir -p "$JAVA/graphics"
           cp wudroid-overlay/WudroidVulkanX.kt "$JAVA/graphics/WudroidVulkanX.kt"
           cp wudroid-overlay/EmulationActivity.kt "$JAVA/emulation/EmulationActivity.kt"
+          cp wudroid-overlay/WudroidEmulationSession.kt "$JAVA/emulation/WudroidEmulationSession.kt"
 
           mkdir -p "$JAVA/graphicpacks"
           cp wudroid-overlay/WudroidBundledGraphicPacks.kt \
@@ -138,6 +139,7 @@ jobs:
           python3 wudroid-overlay/apply-v011q-editor-polish-ptbr.py
           python3 wudroid-overlay/apply-v011r-quickstate-engine.py
           python3 wudroid-overlay/apply-v011s-savestation.py
+          python3 wudroid-overlay/apply-v011t-savestation-runtimefix.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -148,9 +150,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 27', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 28', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.1-savestation-test11"', s)
+                     'versionName = "0.1.1-savestation-test12"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -209,21 +211,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.1-QuickStateEngine-Test10-aligned.apk
+            "$APK" out/Wudroid-0.1.1-SaveStation-Test12-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.1-QuickStateEngine-Test10.apk \
-            out/Wudroid-0.1.1-QuickStateEngine-Test10-aligned.apk
+            --out out/Wudroid-0.1.1-SaveStation-Test12.apk \
+            out/Wudroid-0.1.1-SaveStation-Test12-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.1-QuickStateEngine-Test10.apk
+            out/Wudroid-0.1.1-SaveStation-Test12.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.1-QuickStateEngine-Test10-APK
-          path: out/Wudroid-0.1.1-QuickStateEngine-Test10.apk
+          name: Wudroid-0.1.1-SaveStation-Test12-APK
+          path: out/Wudroid-0.1.1-SaveStation-Test12.apk
           if-no-files-found: error
           compression-level: 0
