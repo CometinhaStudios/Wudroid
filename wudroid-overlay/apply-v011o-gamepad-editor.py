@@ -449,14 +449,19 @@ editor_api = r'''
 
         for ((_, input) in inputs) {
             val before = input.getBoundingRectangle()
-            val centerX = before.centerX()
-            val centerY = before.centerY()
-            val targetWidth = (before.width() * ratio).roundToInt().coerceAtLeast(inputsMinSize)
-            val targetHeight = (before.height() * ratio).roundToInt().coerceAtLeast(inputsMinSize)
+            // Input.getBoundingRectangle() returns the Cemu InputOverlayRect-like
+            // structure in this Android branch, not android.graphics.Rect.  Use
+            // its coordinates directly instead of Rect helper methods.
+            val beforeWidth = before.right - before.left
+            val beforeHeight = before.bottom - before.top
+            val centerX = before.left + beforeWidth / 2
+            val centerY = before.top + beforeHeight / 2
+            val targetWidth = (beforeWidth * ratio).roundToInt().coerceAtLeast(inputsMinSize)
+            val targetHeight = (beforeHeight * ratio).roundToInt().coerceAtLeast(inputsMinSize)
 
             input.resize(
-                diffX = targetWidth - before.width(),
-                diffY = targetHeight - before.height(),
+                diffX = targetWidth - beforeWidth,
+                diffY = targetHeight - beforeHeight,
                 maxWidth = width,
                 maxHeight = height,
                 minWidthHeight = inputsMinSize,
