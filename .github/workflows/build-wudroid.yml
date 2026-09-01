@@ -135,6 +135,7 @@ jobs:
           python3 wudroid-overlay/apply-v011n-menu-flow-gamepad.py
           python3 wudroid-overlay/apply-v011o-gamepad-editor.py
           python3 wudroid-overlay/apply-v011p-individual-gamepad-editor.py
+          python3 wudroid-overlay/apply-v011q-editor-polish-saveui.py
 
           python3 - <<'PY'
           from pathlib import Path
