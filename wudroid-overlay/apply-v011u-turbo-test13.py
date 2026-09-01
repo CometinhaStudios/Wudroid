@@ -69,6 +69,7 @@ Java_info_cemu_cemu_nativeinterface_NativeEmulation_setFastForwardEnabled(
 imports = [
     'import androidx.compose.foundation.gestures.detectDragGestures',
     'import androidx.compose.runtime.DisposableEffect',
+    'import androidx.compose.foundation.layout.size',
     'import androidx.compose.ui.unit.IntOffset',
     'import kotlin.math.roundToInt',
 ]
@@ -107,7 +108,7 @@ editor_anchor = '''        if (inputOverlayInputMode != DEFAULT) {\n            
 if editor_anchor not in screen:
     raise SystemExit('Gamepad editor invocation anchor missing')
 
-turbo_call = '''        WudroidTurboButton(\n            modifier = Modifier\n                .align(Alignment.BottomCenter)\n                .offset {\n                    IntOffset(\n                        wudroidTurboOffsetX.roundToInt(),\n                        wudroidTurboOffsetY.roundToInt(),\n                    )\n                },\n            enabled = wudroidTurboEnabled,\n            editing = inputOverlayInputMode != DEFAULT,\n            onToggle = {\n                wudroidTurboEnabled = !wudroidTurboEnabled\n                NativeEmulation.setFastForwardEnabled(wudroidTurboEnabled)\n            },\n            onDrag = { dx, dy ->\n                wudroidTurboOffsetX += dx\n                wudroidTurboOffsetY += dy\n            },\n            onDragFinished = {\n                wudroidTurboPrefs.edit()\n                    .putFloat("offset_x", wudroidTurboOffsetX)\n                    .putFloat("offset_y", wudroidTurboOffsetY)\n                    .apply()\n            },\n        )\n\n'''
+turbo_call = '''        // WUDROID_TURBO_TEST13_BUILDFIX1: explicit BoxScope for align.\n        Box(modifier = Modifier.fillMaxSize()) {\n            WudroidTurboButton(\n                modifier = Modifier\n                    .align(Alignment.BottomCenter)\n                    .offset {\n                        IntOffset(\n                            wudroidTurboOffsetX.roundToInt(),\n                            wudroidTurboOffsetY.roundToInt(),\n                        )\n                    },\n                enabled = wudroidTurboEnabled,\n                editing = inputOverlayInputMode != DEFAULT,\n                onToggle = {\n                    wudroidTurboEnabled = !wudroidTurboEnabled\n                    NativeEmulation.setFastForwardEnabled(wudroidTurboEnabled)\n                },\n                onDrag = { dx, dy ->\n                    wudroidTurboOffsetX += dx\n                    wudroidTurboOffsetY += dy\n                },\n                onDragFinished = {\n                    wudroidTurboPrefs.edit()\n                        .putFloat("offset_x", wudroidTurboOffsetX)\n                        .putFloat("offset_y", wudroidTurboOffsetY)\n                        .apply()\n                },\n            )\n        }\n\n'''
 screen = screen.replace(editor_anchor, turbo_call + editor_anchor, 1)
 
 function_anchor = '@Composable\nprivate fun EditInputsLayout('
@@ -192,6 +193,8 @@ checks = {
     screen_path: [
         marker,
         'WudroidTurboButton(',
+        'import androidx.compose.foundation.layout.size',
+        'Box(modifier = Modifier.fillMaxSize())',
         'text = "⚡"',
         'text = if (enabled) "3×" else "1×"',
         'NativeEmulation.setFastForwardEnabled(wudroidTurboEnabled)',
