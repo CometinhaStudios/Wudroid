@@ -405,8 +405,8 @@ Java_info_cemu_cemu_nativeinterface_NativeEmulation_saveQuickState(
     JNIEnv* env, [[maybe_unused]] jclass clazz, jstring state_path)
 {
     CafeSystem::PauseTitle();
-    const fs::path path = JNIUtils::toString(env, state_path);
-    return WudroidQuickState::Save(path);
+    const fs::path path = JNIUtils::FromJString(env, state_path);
+    return NativeEmulation::WudroidQuickState::Save(path);
 }
 
 extern "C" [[maybe_unused]] JNIEXPORT jint JNICALL
@@ -414,8 +414,8 @@ Java_info_cemu_cemu_nativeinterface_NativeEmulation_loadQuickState(
     JNIEnv* env, [[maybe_unused]] jclass clazz, jstring state_path)
 {
     CafeSystem::PauseTitle();
-    const fs::path path = JNIUtils::toString(env, state_path);
-    return WudroidQuickState::Load(path);
+    const fs::path path = JNIUtils::FromJString(env, state_path);
+    return NativeEmulation::WudroidQuickState::Load(path);
 }
 '''
 
@@ -573,8 +573,9 @@ checks = {
         'external fun loadQuickState(path: String): Int',
     ],
     native_cpp_path: [
-        'WudroidQuickState::Save(path)',
-        'WudroidQuickState::Load(path)',
+        'JNIUtils::FromJString(env, state_path)',
+        'NativeEmulation::WudroidQuickState::Save(path)',
+        'NativeEmulation::WudroidQuickState::Load(path)',
         'Java_info_cemu_cemu_nativeinterface_NativeEmulation_saveQuickState',
         'Java_info_cemu_cemu_nativeinterface_NativeEmulation_loadQuickState',
         'extern "C" void* memory_getBase();',
@@ -587,6 +588,14 @@ for p, needles in checks.items():
     missing = [n for n in needles if n not in text]
     if missing:
         raise SystemExit(f'Verification failed for {p}: {missing}')
+
+# BuildFix5: the SSimco/Cemu android-port JNI helper is FromJString (capital F/J/S).
+# Also, WudroidQuickState is nested inside namespace NativeEmulation.
+cpp_verify = native_cpp_path.read_text()
+if 'JNIUtils::toString(env, state_path)' in cpp_verify:
+    raise SystemExit('BuildFix5 regression: obsolete JNIUtils::toString still present')
+if 'return WudroidQuickState::' in cpp_verify:
+    raise SystemExit('BuildFix5 regression: Quick State JNI call is missing NativeEmulation namespace')
 
 print('Wudroid Quick State Engine Test10 applied')
 print('- real JNI save/load bridge added to NativeEmulation')
