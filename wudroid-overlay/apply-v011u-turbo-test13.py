@@ -73,27 +73,29 @@ imports = [
     'import androidx.compose.ui.unit.IntOffset',
     'import kotlin.math.roundToInt',
 ]
+# WUDROID_TURBO_TEST13_BUILDFIX2
+# Keep import insertion independent from Cemu's exact import ordering.  The previous
+# Test13 BuildFix1 still assumed specific neighboring imports and therefore stopped
+# before compilation when layout.size was absent.  Kotlin accepts imports in any
+# order, so append each missing import to the existing import block.
+def ensure_import(source: str, imp: str) -> str:
+    if imp in source:
+        return source
+
+    lines = source.splitlines(keepends=True)
+    import_indexes = [
+        i for i, line in enumerate(lines)
+        if line.startswith('import ')
+    ]
+    if not import_indexes:
+        raise SystemExit('EmulationScreen.kt import block missing')
+
+    insert_at = import_indexes[-1] + 1
+    lines.insert(insert_at, imp + '\n')
+    return ''.join(lines)
+
 for imp in imports:
-    if imp not in screen:
-        # Kotlin source already imports detectTapGestures in Test11/12.
-        if imp.startswith('import androidx.compose.foundation.gestures') and 'import androidx.compose.foundation.gestures.detectTapGestures\n' in screen:
-            screen = screen.replace(
-                'import androidx.compose.foundation.gestures.detectTapGestures\n',
-                'import androidx.compose.foundation.gestures.detectTapGestures\n' + imp + '\n',
-                1,
-            )
-        elif imp.startswith('import androidx.compose.runtime') and 'import androidx.compose.runtime.remember\n' in screen:
-            screen = screen.replace('import androidx.compose.runtime.remember\n', 'import androidx.compose.runtime.remember\n' + imp + '\n', 1)
-        elif imp.startswith('import androidx.compose.ui.unit') and 'import androidx.compose.ui.unit.dp\n' in screen:
-            screen = screen.replace('import androidx.compose.ui.unit.dp\n', 'import androidx.compose.ui.unit.dp\n' + imp + '\n', 1)
-        elif imp.startswith('import kotlin.math'):
-            # Safe top-level insertion when no kotlin.math import exists.
-            first_import = screen.find('import ')
-            if first_import < 0:
-                raise SystemExit('EmulationScreen.kt import block missing')
-            screen = screen[:first_import] + imp + '\n' + screen[first_import:]
-        else:
-            raise SystemExit(f'Unable to insert import: {imp}')
+    screen = ensure_import(screen, imp)
 
 state_anchor = '    val wudroidQuickStateContext = LocalContext.current // WUDROID_QUICKSTATE_ENGINE_TEST10\n'
 if state_anchor not in screen:
