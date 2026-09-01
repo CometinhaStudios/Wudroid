@@ -1,3 +1,7 @@
+# STATUS ATUAL: Turbo Test13 BuildFix3
+
+Corrige o import de `Modifier.offset` ausente na compilação Kotlin. Veja `README-TURBO-TEST13-BUILDFIX3.md`.
+
 # Wudroid 0.1.1 — Turbo Test13 BuildFix1
 
 Pacote incremental sobre o Save Station Test12 BuildFix1.

@@ -70,10 +70,13 @@ imports = [
     'import androidx.compose.foundation.gestures.detectDragGestures',
     'import androidx.compose.runtime.DisposableEffect',
     'import androidx.compose.foundation.layout.size',
+    'import androidx.compose.foundation.layout.offset',
     'import androidx.compose.ui.unit.IntOffset',
     'import kotlin.math.roundToInt',
 ]
-# WUDROID_TURBO_TEST13_BUILDFIX2
+# WUDROID_TURBO_TEST13_BUILDFIX3
+# BuildFix3: include androidx.compose.foundation.layout.offset because the
+# lightning button uses Modifier.offset { IntOffset(...) }.
 # Keep import insertion independent from Cemu's exact import ordering.  The previous
 # Test13 BuildFix1 still assumed specific neighboring imports and therefore stopped
 # before compilation when layout.size was absent.  Kotlin accepts imports in any
@@ -196,6 +199,7 @@ checks = {
         marker,
         'WudroidTurboButton(',
         'import androidx.compose.foundation.layout.size',
+        'import androidx.compose.foundation.layout.offset',
         'Box(modifier = Modifier.fillMaxSize())',
         'text = "⚡"',
         'text = if (enabled) "3×" else "1×"',
