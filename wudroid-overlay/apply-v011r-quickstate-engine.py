@@ -64,10 +64,13 @@ cpp_includes = '''
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <vector>
 #include <unistd.h>
+
+namespace fs = std::filesystem;
 
 // Cemu exposes the base of the 4 GiB guest address reservation.
 extern "C" void* memory_getBase();
@@ -575,6 +578,8 @@ checks = {
         'Java_info_cemu_cemu_nativeinterface_NativeEmulation_saveQuickState',
         'Java_info_cemu_cemu_nativeinterface_NativeEmulation_loadQuickState',
         'extern "C" void* memory_getBase();',
+        '#include <filesystem>',
+        'namespace fs = std::filesystem;',
     ],
 }
 for p, needles in checks.items():
