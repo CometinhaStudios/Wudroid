@@ -297,104 +297,8 @@ if editor_fn_count != 1:
 
 # ---------------------------------------------------------------------------
 # ViewModel: persist the chosen transparency only when editor is concluded.
-# BuildFix3: do NOT depend on the exact formatting/body of
-# saveInputOverlayRectangles. Locate the real Kotlin function structurally and
-# append the new method after its closing brace.
 # ---------------------------------------------------------------------------
-def find_kotlin_function_end(text: str, function_name: str):
-    match = re.search(
-        r"(?m)^[ \t]*(?:private[ \t]+)?fun[ \t]+" + re.escape(function_name) + r"[ \t]*\(",
-        text,
-    )
-    if not match:
-        return None
-
-    brace = text.find("{", match.end())
-    if brace < 0:
-        return None
-
-    depth = 0
-    i = brace
-    in_string = False
-    in_char = False
-    escape = False
-    line_comment = False
-    block_comment = False
-    while i < len(text):
-        ch = text[i]
-        nxt = text[i + 1] if i + 1 < len(text) else ""
-
-        if line_comment:
-            if ch == "\n":
-                line_comment = False
-            i += 1
-            continue
-        if block_comment:
-            if ch == "*" and nxt == "/":
-                block_comment = False
-                i += 2
-            else:
-                i += 1
-            continue
-        if in_string:
-            if escape:
-                escape = False
-            elif ch == "\\":
-                escape = True
-            elif ch == '"':
-                in_string = False
-            i += 1
-            continue
-        if in_char:
-            if escape:
-                escape = False
-            elif ch == "\\":
-                escape = True
-            elif ch == "'":
-                in_char = False
-            i += 1
-            continue
-
-        if ch == "/" and nxt == "/":
-            line_comment = True
-            i += 2
-            continue
-        if ch == "/" and nxt == "*":
-            block_comment = True
-            i += 2
-            continue
-        if ch == '"':
-            in_string = True
-            i += 1
-            continue
-        if ch == "'":
-            in_char = True
-            i += 1
-            continue
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return i + 1
-        i += 1
-    return None
-
-if 'fun saveInputOverlayAlpha(' not in viewmodel:
-    vm_end = find_kotlin_function_end(viewmodel, 'saveInputOverlayRectangles')
-    if vm_end is None:
-        candidates = [
-            line.strip()
-            for line in viewmodel.splitlines()
-            if 'InputOverlay' in line or 'save' in line
-        ]
-        raise SystemExit(
-            'saveInputOverlayRectangles function not found structurally. Candidates: '
-            + repr(candidates[:30])
-        )
-
-    vm_extra = '''
-
+vm_alpha_fn = r'''
     fun saveInputOverlayAlpha(alpha: Int) {
         viewModelScope.launch {
             dataStore.updateData {
@@ -404,7 +308,25 @@ if 'fun saveInputOverlayAlpha(' not in viewmodel:
         }
     }
 '''
-    viewmodel = viewmodel[:vm_end] + vm_extra + viewmodel[vm_end:]
+if 'fun saveInputOverlayAlpha(alpha: Int)' not in viewmodel:
+    vm_match = re.search(r"(?m)^[ \t]*fun[ \t]+saveInputOverlayRectangles[ \t]*\(", viewmodel)
+    if not vm_match:
+        raise SystemExit('saveInputOverlayRectangles function missing')
+    vm_brace = viewmodel.find('{', vm_match.end())
+    if vm_brace < 0:
+        raise SystemExit('saveInputOverlayRectangles opening brace missing')
+    depth = 0
+    vm_end = None
+    for i in range(vm_brace, len(viewmodel)):
+        if viewmodel[i] == '{': depth += 1
+        elif viewmodel[i] == '}':
+            depth -= 1
+            if depth == 0:
+                vm_end = i + 1
+                break
+    if vm_end is None:
+        raise SystemExit('saveInputOverlayRectangles closing brace missing')
+    viewmodel = viewmodel[:vm_end] + '\n' + vm_alpha_fn + viewmodel[vm_end:]
 
 # ---------------------------------------------------------------------------
 # InputOverlaySurfaceView:
@@ -443,10 +365,6 @@ overlay = overlay.replace(
     1,
 )
 
-set_mode_re = re.compile(
-    r'''    fun setInputMode\(inputMode: InputMode\) \{.*?\n    \}\n(?=    private fun overlayButtonToVPADButton)''',
-    re.S,
-)
 set_mode_fn = r'''    fun setInputMode(inputMode: InputMode) {
         if (this.inputMode == inputMode) {
             return
@@ -456,8 +374,6 @@ set_mode_fn = r'''    fun setInputMode(inputMode: InputMode) {
         this.inputMode = inputMode
 
         if (previousMode == InputMode.DEFAULT && inputMode != InputMode.DEFAULT) {
-            // 100% always means "the size when this edit session started".
-            // This is what prevents the old Done -> grow -> Done -> grow loop.
             wudroidEditorScale = 1f
         }
 
@@ -473,27 +389,40 @@ set_mode_fn = r'''    fun setInputMode(inputMode: InputMode) {
         wudroidEditorScale = 1f
     }
 '''
-overlay, set_mode_count = set_mode_re.subn(set_mode_fn, overlay, count=1)
+overlay, set_mode_count = replace_kotlin_function(overlay, "setInputMode", set_mode_fn)
 if set_mode_count != 1:
-    raise SystemExit('setInputMode function region missing')
+    candidates = [line.strip() for line in overlay.splitlines() if "setInputMode" in line]
+    raise SystemExit("setInputMode function not found structurally. Candidates: " + repr(candidates[:20]))
 
-# Replace Test6's forced scale block with normal rectangle lookup + editor APIs.
-scale_block_re = re.compile(
-    r'''    // WUDROID_MENU_FLOW_GAMEPAD_TEST6\n    // Scale both saved and default Cemu touch rectangles around their centers\..*?    private fun getBoundingRectangleForInput\(input: OverlayInput\): Rect \{.*?\n    \}\n(?=    private fun MutableList<Pair<OverlayInput, Input>>\.addRoundButton)''',
-    re.S,
-)
-replacement_rect_block = r'''    // WUDROID_GAMEPAD_EDITOR_TEST7
-    // Normal runtime lookup: no automatic multiplier is applied when the
-    // overlay is recreated. This removes Test6's compounding-size bug.
+# Remove Test6's automatic scaler structurally, then replace normal rectangle lookup.
+if 'fun wudroidScaleOverlayRect' in overlay:
+    overlay, removed_scale_fn = replace_kotlin_function(overlay, "wudroidScaleOverlayRect", "")
+    if removed_scale_fn != 1:
+        raise SystemExit('wudroidScaleOverlayRect function could not be removed structurally')
+
+replacement_rect_fn = r'''    // WUDROID_GAMEPAD_EDITOR_TEST7
     private fun getBoundingRectangleForInput(input: OverlayInput): Rect {
         val config = input.toConfig()
-        val rect = wudroidTransientRectangles?.get(config) ?: settings.inputOverlayRectMap[config]
-        if (rect != null) {
-            return Rect(rect.left, rect.top, rect.right, rect.bottom)
+        val transient = wudroidTransientRectangles?.get(config)
+        if (transient != null) {
+            return Rect(transient.left, transient.top, transient.right, transient.bottom)
         }
+
+        val saved = settings.inputOverlayRectMap[config]
+        if (saved != null) {
+            return Rect(saved.left, saved.top, saved.right, saved.bottom)
+        }
+
         return getDefaultRectangle(config, width, height, pixelDensity)
     }
+'''
+overlay, rect_count = replace_kotlin_function(overlay, "getBoundingRectangleForInput", replacement_rect_fn)
+if rect_count != 1:
+    raise SystemExit('getBoundingRectangleForInput function not found structurally')
 
+
+editor_api_anchor = replacement_rect_fn
+editor_api = r'''
     fun setWudroidEditorAlpha(alpha: Int?) {
         if (inputMode == InputMode.DEFAULT && alpha == null) {
             wudroidEditorAlphaOverride = null
@@ -501,8 +430,6 @@ replacement_rect_block = r'''    // WUDROID_GAMEPAD_EDITOR_TEST7
         }
         if (alpha == null || wudroidEditorAlphaOverride == alpha) return
 
-        // Re-create the drawings with the new alpha, but use the exact current
-        // rectangles so unsaved movement/size changes are not lost.
         wudroidTransientRectangles = inputs.associate {
             val rect = it.second.getBoundingRectangle()
             it.first.toConfig() to Rect(rect.left, rect.top, rect.right, rect.bottom)
@@ -541,9 +468,23 @@ replacement_rect_block = r'''    // WUDROID_GAMEPAD_EDITOR_TEST7
         invalidate()
     }
 '''
-overlay, scale_count = scale_block_re.subn(replacement_rect_block, overlay, count=1)
-if scale_count != 1:
-    raise SystemExit('Test6 forced scale block not found')
+# Insert editor APIs immediately after getBoundingRectangleForInput.
+rect_match = re.search(r"(?m)^[ \t]*private[ \t]+fun[ \t]+getBoundingRectangleForInput[ \t]*\(", overlay)
+if not rect_match:
+    raise SystemExit('getBoundingRectangleForInput missing after replacement')
+brace = overlay.find('{', rect_match.end())
+depth = 0
+rect_end = None
+for i in range(brace, len(overlay)):
+    if overlay[i] == '{': depth += 1
+    elif overlay[i] == '}':
+        depth -= 1
+        if depth == 0:
+            rect_end = i + 1
+            break
+if rect_end is None:
+    raise SystemExit('getBoundingRectangleForInput closing brace missing')
+overlay = overlay[:rect_end] + '\n' + editor_api + overlay[rect_end:]
 
 # Remove colored bounding-rectangle symbols while moving controls.
 overlay = re.sub(
@@ -554,11 +495,7 @@ overlay = re.sub(
 )
 overlay = overlay.replace('            configuredInput.disableDrawingBoundingRect()\n', '', 1)
 
-# Extend InputOverlaySurface composable so Compose sliders can control the real view.
-surface_fn_re = re.compile(
-    r'''@Composable\nfun InputOverlaySurface\(.*?\n\}\n\s*$''',
-    re.S,
-)
+# Extend InputOverlaySurface composable structurally.
 surface_fn = r'''@Composable
 fun InputOverlaySurface(
     isVisible: Boolean,
@@ -587,7 +524,6 @@ fun InputOverlaySurface(
             view.applySettings(inputOverlaySettings)
             view.onEditFinishedListener = onEditFinished
             view.onEditAlphaFinishedListener = onEditAlphaFinished
-            // Save the live editor state before clearing preview overrides.
             view.setInputMode(inputMode)
             view.setWudroidEditorAlpha(editorAlpha)
             view.setWudroidEditorScale(editorScale)
@@ -595,9 +531,9 @@ fun InputOverlaySurface(
     )
 }
 '''
-overlay, surface_count = surface_fn_re.subn(surface_fn, overlay, count=1)
+overlay, surface_count = replace_kotlin_function(overlay, "InputOverlaySurface", surface_fn)
 if surface_count != 1:
-    raise SystemExit('InputOverlaySurface composable region missing')
+    raise SystemExit('InputOverlaySurface composable not found structurally')
 
 screen_path.write_text(screen)
 viewmodel_path.write_text(viewmodel)
@@ -633,7 +569,7 @@ for path, required in checks.items():
 if 'wudroidScaleOverlayRect' in overlay_path.read_text():
     raise SystemExit('Test7 failed: old Test6 automatic gamepad scaler still exists')
 
-print('Wudroid 0.1.1 Gamepad Editor Test7 applied')
+print('Wudroid 0.1.1 Gamepad Editor Test7 RobustFix applied')
 print('- menu flow from Test6 left unchanged')
 print('- old per-button Move/Resize editor UI removed')
 print('- top Wudroid editor panel: Transparency + Size')
