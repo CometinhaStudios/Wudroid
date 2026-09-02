@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test1 BuildFix3
+
+Corrige a verificação final de versão do Test1.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test1 BuildFix2
 
 Corrige o FAB da biblioteca sem alterar o escopo do Test1.

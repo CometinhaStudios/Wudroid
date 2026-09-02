@@ -13,6 +13,7 @@ main = main_path.read_text()
 screen = screen_path.read_text()
 manifest = manifest_path.read_text()
 marker = 'WUDROID_012_LOCAL_MULTIPLAYER_TEST1'
+# WUDROID_012_LOCAL_MULTIPLAYER_TEST1_BUILDFIX3
 
 if marker in main:
     print('Wudroid 0.1.2 Local Multiplayer Test1 already applied')
@@ -637,6 +638,24 @@ main = main.replace('"Wudroid 0.0.8 • frontend independente"', '"Wudroid 0.1.2
 main = main.replace('InfoRow("Wudroid", "0.0.8")', 'InfoRow("Wudroid", "0.1.2")')
 main = main.replace('Text("0.0.8", color = WBlue, fontWeight = FontWeight.Bold)', 'Text("0.1.2", color = WBlue, fontWeight = FontWeight.Bold)')
 
+# BuildFix3: normalize visible Wudroid version labels even if legacy patches
+# changed the previous version before the 0.1.2 patch runs.
+main = re.sub(
+    r'"Wudroid\s+\d+\.\d+\.\d+\s*•\s*frontend independente"',
+    '"Wudroid 0.1.2 • multiplayer local Test1"',
+    main,
+)
+main = re.sub(
+    r'InfoRow\("Wudroid",\s*"\d+\.\d+\.\d+"\)',
+    'InfoRow("Wudroid", "0.1.2")',
+    main,
+)
+main = re.sub(
+    r'Text\("\d+\.\d+\.\d+",\s*color\s*=\s*WBlue,\s*fontWeight\s*=\s*FontWeight\.Bold\)',
+    'Text("0.1.2", color = WBlue, fontWeight = FontWeight.Bold)',
+    main,
+)
+
 # Emulation host UI + save UI disabled.
 screen = ensure_import(screen, 'import info.cemu.cemu.WudroidLanMultiplayer')
 context_anchor = '    val wudroidQuickStateContext = LocalContext.current // WUDROID_QUICKSTATE_ENGINE_TEST10\n'
@@ -743,7 +762,7 @@ checks = {
         'repeat(8) { index ->',
         'WudroidLanMultiplayer.scanHosts',
         'WudroidProfileStore.save',
-        '"0.1.2"',
+        '0.1.2',
     ],
     screen_path: [
         marker,
