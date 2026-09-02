@@ -1,3 +1,7 @@
+# STATUS ATUAL: Turbo Test13 BuildFix4
+
+Corrige o backend do Turbo para usar `ActiveSettings::SetTimerShiftFactor()` nesta revisão do Cemu. Veja `README-TURBO-TEST13-BUILDFIX4.md`.
+
 # STATUS ATUAL: Turbo Test13 BuildFix3
 
 Corrige o import de `Modifier.offset` ausente na compilação Kotlin. Veja `README-TURBO-TEST13-BUILDFIX3.md`.

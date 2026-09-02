@@ -1,3 +1,5 @@
+# BuildFix4: this Cemu revision exposes timer speed through
+# ActiveSettings::SetTimerShiftFactor(), not a public TimerShiftFactor field.
 #!/usr/bin/env python3
 from pathlib import Path
 
@@ -23,7 +25,7 @@ if 'WUDROID_SAVESTATION_TEST12' not in screen:
 
 # ---------------------------------------------------------------------------
 # 1) Native bridge. Cemu already has a desktop fast-forward implementation:
-#    ActiveSettings::TimerShiftFactor = 3 for fast-forward, 1 for normal.
+#    ActiveSettings::SetTimerShiftFactor(3) for fast-forward, 1 for normal.
 #    Reuse the emulator's own timing control instead of faking frame skipping.
 # ---------------------------------------------------------------------------
 kt_anchor = '    external fun loadQuickState(path: String): Int\n'
@@ -57,7 +59,7 @@ Java_info_cemu_cemu_nativeinterface_NativeEmulation_setFastForwardEnabled(
 {
     // Match Cemu's native desktop fast-forward behavior: 3x while enabled,
     // normal 1x timing otherwise.
-    ActiveSettings::TimerShiftFactor = enabled == JNI_TRUE ? 3 : 1;
+    ActiveSettings::SetTimerShiftFactor(enabled == JNI_TRUE ? 3 : 1);
 }
 ''' + '\n'
 
@@ -74,7 +76,7 @@ imports = [
     'import androidx.compose.ui.unit.IntOffset',
     'import kotlin.math.roundToInt',
 ]
-# WUDROID_TURBO_TEST13_BUILDFIX3
+# WUDROID_TURBO_TEST13_BUILDFIX4
 # BuildFix3: include androidx.compose.foundation.layout.offset because the
 # lightning button uses Modifier.offset { IntOffset(...) }.
 # Keep import insertion independent from Cemu's exact import ordering.  The previous
@@ -192,7 +194,7 @@ checks = {
     native_cpp_path: [
         marker,
         '#include "config/ActiveSettings.h"',
-        'ActiveSettings::TimerShiftFactor = enabled == JNI_TRUE ? 3 : 1;',
+        'ActiveSettings::SetTimerShiftFactor(enabled == JNI_TRUE ? 3 : 1);',
         jni_marker,
     ],
     screen_path: [
