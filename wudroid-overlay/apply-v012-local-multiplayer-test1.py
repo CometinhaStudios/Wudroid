@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 main_path = Path('cemu-engine/src/android/app/src/main/java/info/cemu/cemu/MainActivity.kt')
 screen_path = Path('cemu-engine/src/android/app/src/main/java/info/cemu/cemu/emulation/EmulationScreen.kt')
@@ -13,7 +14,7 @@ main = main_path.read_text()
 screen = screen_path.read_text()
 manifest = manifest_path.read_text()
 marker = 'WUDROID_012_LOCAL_MULTIPLAYER_TEST1'
-# WUDROID_012_LOCAL_MULTIPLAYER_TEST1_BUILDFIX3
+# WUDROID_012_LOCAL_MULTIPLAYER_TEST1_BUILDFIX4
 
 if marker in main:
     print('Wudroid 0.1.2 Local Multiplayer Test1 already applied')

@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test1 BuildFix4
+
+Corrige o import ausente de `re` no patch da 0.1.2.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test1 BuildFix3
 
 Corrige a verificação final de versão do Test1.
