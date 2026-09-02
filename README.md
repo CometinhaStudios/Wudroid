@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test5 BuildFix3
+
+Corrige a verificação antiga do mapeamento Wii Remote no patch Test4.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test5 BuildFix2
 
 Corrige as quebras de linha literais do BuildFix1.

@@ -7,6 +7,7 @@ if not main_path.exists():
 
 main = main_path.read_text()
 marker = "WUDROID_012_LOCAL_MULTIPLAYER_TEST4"
+# WUDROID_012_LOCAL_MULTIPLAYER_TEST5_BUILDFIX3
 if marker in main:
     print("Wudroid 0.1.2 Local Multiplayer Test4 already applied")
     raise SystemExit(0)
@@ -411,7 +412,6 @@ required = [
     'controllerKind = controllerKind',
     'RemoteLanWiimotePad()',
     'WudroidWiimoteMapping.HOME',
-    'const val ONE = 3',
     'WudroidWiimoteMapping.ONE',
 ]
 missing = [x for x in required if x not in main]
