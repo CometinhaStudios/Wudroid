@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test1
+
+Nova linha 0.1.2: perfil + Players 1–8 + fundação de multiplayer LAN. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST1.md`.
+
 # STATUS ATUAL: Turbo Test13 BuildFix6
 
 Corrige a ordem do patch da configuração inicial sem quebrar WUX/biblioteca. Veja `README-TURBO-TEST13-BUILDFIX6.md`.
