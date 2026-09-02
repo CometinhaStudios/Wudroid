@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test1 BuildFix1
+
+Corrige o Apply da chamada LibraryScreen sem mudar o escopo do Test1.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test1
 
 Nova linha 0.1.2: perfil + Players 1–8 + fundação de multiplayer LAN. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST1.md`.

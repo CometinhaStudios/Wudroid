@@ -58,22 +58,74 @@ main = main.replace(
     1,
 )
 
-lib_call = '''        Screen.Library -> LibraryScreen(
-            refreshRequest = refreshLibraryRequest,
-            onSettings = { screen = Screen.Settings },
-            onChooseFolder = { folderLauncher.launch(null) },
-            onGameProfile = { selectedProfileGame = it }
-        )'''
-lib_new = '''        Screen.Library -> LibraryScreen(
-            refreshRequest = refreshLibraryRequest,
-            onSettings = { screen = Screen.Settings },
-            onMultiplayer = { screen = Screen.Multiplayer },
-            onChooseFolder = { folderLauncher.launch(null) },
-            onGameProfile = { selectedProfileGame = it }
-        )'''
-if lib_call not in main:
-    raise SystemExit('LibraryScreen root call anchor missing')
-main = main.replace(lib_call, lib_new, 1)
+# BuildFix1: do not depend on exact LibraryScreen formatting.
+def find_balanced_call(source: str, token: str):
+    start = source.find(token)
+    if start < 0:
+        return None
+    open_paren = source.find("(", start + len(token))
+    if open_paren < 0:
+        return None
+    depth = 0
+    in_string = False
+    escaped = False
+    for i in range(open_paren, len(source)):
+        ch = source[i]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return start, i + 1
+    return None
+
+library_call_range = find_balanced_call(main, "Screen.Library -> LibraryScreen")
+if library_call_range is None:
+    raise SystemExit("LibraryScreen root call missing")
+
+lib_start, lib_end = library_call_range
+lib_block = main[lib_start:lib_end]
+if "onMultiplayer =" not in lib_block:
+    lines = lib_block.splitlines(keepends=True)
+    inserted = False
+    for i, line in enumerate(lines):
+        if "onSettings =" in line:
+            indent = line[:len(line) - len(line.lstrip())]
+            newline = "\r\n" if line.endswith("\r\n") else "\n"
+            lines.insert(i + 1, f"{indent}onMultiplayer = {{ screen = Screen.Multiplayer }},{newline}")
+            inserted = True
+            break
+    if not inserted:
+        first_newline = lib_block.find("\n")
+        if first_newline < 0:
+            raise SystemExit("LibraryScreen root call malformed")
+        indent_match = re.search(r"\n([ \t]+)\S", lib_block)
+        indent = indent_match.group(1) if indent_match else "            "
+        lib_block = (
+            lib_block[:first_newline + 1]
+            + f"{indent}onMultiplayer = {{ screen = Screen.Multiplayer }},\n"
+            + lib_block[first_newline + 1:]
+        )
+    else:
+        lib_block = "".join(lines)
+    main = main[:lib_start] + lib_block + main[lib_end:]
+
+verify_range = find_balanced_call(main, "Screen.Library -> LibraryScreen")
+if verify_range is None:
+    raise SystemExit("LibraryScreen root verification missing")
+verify_block = main[verify_range[0]:verify_range[1]]
+if "onMultiplayer = { screen = Screen.Multiplayer }" not in verify_block:
+    raise SystemExit("LibraryScreen multiplayer callback insertion failed")
 
 settings_call_old = '''            onControls = { screen = Screen.Controls },
             onGameFolders = { screen = Screen.GameFolders },'''
