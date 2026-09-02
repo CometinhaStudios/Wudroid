@@ -175,65 +175,92 @@ if sig_old not in main:
     raise SystemExit('Library signature anchor missing')
 main = main.replace(sig_old, sig_new, 1)
 
-fab_old = '''        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onChooseFolder,
-                containerColor = WBlue,
-                contentColor = Color.Black,
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 18.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    WudroidIcon(WIcon.Folder, Modifier.size(23.dp), Color.Black)
-                    Spacer(Modifier.width(10.dp))
-                    Text("Pasta", fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-'''
-fab_new = '''        floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                FloatingActionButton(
-                    onClick = onMultiplayer,
-                    containerColor = WCard2,
-                    contentColor = WBlue,
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 18.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        WudroidIcon(WIcon.Controller, Modifier.size(23.dp), WBlue)
-                        Spacer(Modifier.width(10.dp))
-                        Text("Multiplayer", color = WText, fontWeight = FontWeight.Bold)
-                    }
-                }
-                FloatingActionButton(
-                    onClick = onChooseFolder,
-                    containerColor = WBlue,
-                    contentColor = Color.Black,
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 18.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        WudroidIcon(WIcon.Folder, Modifier.size(23.dp), Color.Black)
-                        Spacer(Modifier.width(10.dp))
-                        Text("Pasta", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-'''
-if fab_old not in main:
-    raise SystemExit('Library FAB anchor missing')
-main = main.replace(fab_old, fab_new, 1)
+# BuildFix2: locate Scaffold floatingActionButton structurally inside LibraryScreen.
+def replace_library_fab(source: str) -> str:
+    lib_start = source.find("private fun LibraryScreen(")
+    if lib_start < 0:
+        raise SystemExit("LibraryScreen function missing for FAB patch")
+    next_composable = source.find("\n@Composable\n", lib_start + 1)
+    lib_end = next_composable if next_composable >= 0 else len(source)
+    block = source[lib_start:lib_end]
+
+    token = "floatingActionButton ="
+    token_pos = block.find(token)
+    if token_pos < 0:
+        raise SystemExit("Library floatingActionButton missing")
+    brace_open = block.find("{", token_pos)
+    if brace_open < 0:
+        raise SystemExit("Library floatingActionButton opening brace missing")
+
+    depth = 0
+    brace_close = -1
+    for i in range(brace_open, len(block)):
+        ch = block[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                brace_close = i + 1
+                break
+    if brace_close < 0:
+        raise SystemExit("Library floatingActionButton closing brace missing")
+
+    old_fab = block[token_pos:brace_close]
+    if "onChooseFolder" not in old_fab:
+        raise SystemExit("Library FAB no longer contains folder action")
+
+    indent_start = block.rfind("\n", 0, token_pos) + 1
+    indent = block[indent_start:token_pos]
+    replacement_lines = [
+        "floatingActionButton = {",
+        "            Column(",
+        "                horizontalAlignment = Alignment.End,",
+        "                verticalArrangement = Arrangement.spacedBy(10.dp)",
+        "            ) {",
+        "                FloatingActionButton(",
+        "                    onClick = onMultiplayer,",
+        "                    containerColor = WCard2,",
+        "                    contentColor = WBlue,",
+        "                    shape = RoundedCornerShape(18.dp)",
+        "                ) {",
+        "                    Row(",
+        "                        modifier = Modifier.padding(horizontal = 18.dp),",
+        "                        verticalAlignment = Alignment.CenterVertically",
+        "                    ) {",
+        "                        WudroidIcon(WIcon.Controller, Modifier.size(23.dp), WBlue)",
+        "                        Spacer(Modifier.width(10.dp))",
+        "                        Text(\"Multiplayer\", color = WText, fontWeight = FontWeight.Bold)",
+        "                    }",
+        "                }",
+        "",
+        "                FloatingActionButton(",
+        "                    onClick = onChooseFolder,",
+        "                    containerColor = WBlue,",
+        "                    contentColor = Color.Black,",
+        "                    shape = RoundedCornerShape(18.dp)",
+        "                ) {",
+        "                    Row(",
+        "                        modifier = Modifier.padding(horizontal = 18.dp),",
+        "                        verticalAlignment = Alignment.CenterVertically",
+        "                    ) {",
+        "                        WudroidIcon(WIcon.Folder, Modifier.size(23.dp), Color.Black)",
+        "                        Spacer(Modifier.width(10.dp))",
+        "                        Text(\"Pasta\", fontWeight = FontWeight.Bold)",
+        "                    }",
+        "                }",
+        "            }",
+        "        }",
+    ]
+    replacement = ("\n" + indent).join(replacement_lines)
+    block = block[:token_pos] + replacement + block[brace_close:]
+    if "onClick = onMultiplayer" not in block or 'Text("Multiplayer"' not in block:
+        raise SystemExit("Library Multiplayer FAB insertion failed")
+    if "onClick = onChooseFolder" not in block or 'Text("Pasta"' not in block:
+        raise SystemExit("Library Folder FAB preservation failed")
+    return source[:lib_start] + block + source[lib_end:]
+
+main = replace_library_fab(main)
 
 settings_sig_old = '''    onAdvanced: () -> Unit,
     onControls: () -> Unit,
