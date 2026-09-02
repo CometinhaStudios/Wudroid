@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test5 BuildFix1
+
+Corrige o Apply da entrada Controles/Perfil sem reverter o Test5.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test5
 
 Player 1: GamePad/Wii Remote, perfil por jogo atualizado e Wii Remote horizontal. Player 2 remoto mantém Pro/Wii Remote.
