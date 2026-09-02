@@ -67,6 +67,7 @@ data class WudroidLanParticipant(
     val localId: String,
     val nickname: String,
     val playerNumber: Int,
+    val controllerKind: String = "PRO",
 )
 
 data class WudroidLanHost(
@@ -169,7 +170,7 @@ object WudroidLanMultiplayer {
                                     val pressed = parts[3] == "1"
                                     if (participants.containsKey(clientId) &&
                                         mappingId != null &&
-                                        mappingId in NativeInput.ProButton.A..NativeInput.ProButton.STICKR
+                                        mappingId in 1..64
                                     ) {
                                         mainHandler.post {
                                             runCatching {
@@ -188,7 +189,8 @@ object WudroidLanMultiplayer {
                                     val ly = parts[3].toFloatOrNull()
                                     val rx = parts[4].toFloatOrNull()
                                     val ry = parts[5].toFloatOrNull()
-                                    if (participants.containsKey(clientId) &&
+                                    val participant = participants[clientId]
+                                    if (participant?.controllerKind == "PRO" &&
                                         lx != null && ly != null && rx != null && ry != null
                                     ) {
                                         applyRemoteSticks(
@@ -212,11 +214,13 @@ object WudroidLanMultiplayer {
                             }
 
                             text.startsWith("$JOIN_V2|") -> {
-                                val parts = text.split("|", limit = 5)
+                                val parts = text.split("|", limit = 6)
                                 if (parts.size >= 5) {
                                     val clientId = clean(parts[1])
                                     val clientName = clean(parts[2]).ifBlank { "Jogador 2" }.take(24)
                                     val suppliedHash = parts[3]
+                                    val requestedKind =
+                                        if (parts.size >= 6 && parts[5] == "WIIMOTE") "WIIMOTE" else "PRO"
                                     val existing = participants[clientId]
 
                                     if (room.isPrivate && suppliedHash != room.passwordHash) {
@@ -224,21 +228,29 @@ object WudroidLanMultiplayer {
                                     } else if (existing == null && participants.isNotEmpty()) {
                                         reply(socket, packet, "$REJECT_V2|FULL")
                                     } else {
-                                        val participant = existing ?: WudroidLanParticipant(
+                                        val participant = WudroidLanParticipant(
                                             localId = clientId,
                                             nickname = clientName,
                                             playerNumber = 2,
+                                            controllerKind = requestedKind,
                                         )
                                         participants[clientId] = participant
                                         mainHandler.post {
                                             runCatching {
                                                 NativeInput.setControllerType(
                                                     1,
-                                                    NativeInput.EmulatedControllerType.PRO
+                                                    if (requestedKind == "WIIMOTE")
+                                                        NativeInput.EmulatedControllerType.WIIMOTE
+                                                    else
+                                                        NativeInput.EmulatedControllerType.PRO
                                                 )
                                             }
                                         }
-                                        reply(socket, packet, "$JOINED_V2|${clean(currentProfile.localId)}|${participant.playerNumber}")
+                                        reply(
+                                            socket,
+                                            packet,
+                                            "$JOINED_V2|${clean(currentProfile.localId)}|${participant.playerNumber}|${participant.controllerKind}"
+                                        )
                                     }
                                 }
                             }
@@ -330,6 +342,7 @@ object WudroidLanMultiplayer {
         context: Context,
         host: WudroidLanHost,
         password: String = "",
+        controllerKind: String = "PRO",
         timeoutMs: Int = 1500,
     ): WudroidJoinResult {
         val profile = WudroidProfileStore.load(context.applicationContext)
@@ -348,6 +361,7 @@ object WudroidLanMultiplayer {
                 clean(profile.nickname),
                 suppliedHash,
                 "2",
+                if (controllerKind == "WIIMOTE") "WIIMOTE" else "PRO",
             ).joinToString("|")
             val bytes = payload.toByteArray(Charsets.UTF_8)
             socket.send(
@@ -398,7 +412,7 @@ object WudroidLanMultiplayer {
         clientSocket != null && joinedHostAddress != null && joinedClientId.isNotBlank()
 
     fun sendRemoteButton(mappingId: Int, pressed: Boolean) {
-        if (mappingId !in NativeInput.ProButton.A..NativeInput.ProButton.STICKR) return
+        if (mappingId !in 1..64) return
         val clientId = joinedClientId
         if (clientId.isBlank()) return
         val packet = listOf(
@@ -474,7 +488,7 @@ object WudroidLanMultiplayer {
     private fun releaseRemoteController() {
         mainHandler.post {
             runCatching {
-                for (mappingId in NativeInput.ProButton.A..NativeInput.ProButton.STICKR) {
+                for (mappingId in 1..64) {
                     NativeInput.onOverlayButton(1, mappingId, false)
                 }
                 NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKL_LEFT, 0f)

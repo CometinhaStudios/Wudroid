@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test4
+
+Seleção Pro Controller / Wii Remote para Player 2 remoto.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test3
 
 Test3 adiciona controle remoto LAN do Cliente como Player 2 do Host. Streaming de tela continua para a próxima etapa.

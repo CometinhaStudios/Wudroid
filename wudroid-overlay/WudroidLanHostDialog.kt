@@ -34,8 +34,6 @@ import androidx.compose.ui.unit.sp
 import info.cemu.cemu.WudroidLanMultiplayer
 import info.cemu.cemu.WudroidProfileStore
 import info.cemu.cemu.WudroidRoomConfig
-import info.cemu.cemu.nativeinterface.NativeInput
-import info.cemu.cemu.nativeinterface.NativeSettings
 import kotlinx.coroutines.delay
 
 private val WudroidLanBlue = Color(0xFF00B8F5)
@@ -60,13 +58,6 @@ fun WudroidLanHostDialog(
     LaunchedEffect(hosting) {
         while (hosting) {
             participants = WudroidLanMultiplayer.participants()
-            if (participants.isNotEmpty()) {
-                runCatching {
-                    NativeInput.setControllerType(1, NativeInput.EmulatedControllerType.PRO)
-                    NativeInput.saveInputs()
-                    NativeSettings.saveSettings()
-                }
-            }
             delay(400L)
         }
     }
@@ -142,7 +133,12 @@ fun WudroidLanHostDialog(
                             ) {
                                 Column(Modifier.weight(1f)) {
                                     Text(player.nickname, fontWeight = FontWeight.Bold)
-                                    Text("Jogador ${player.playerNumber}", color = WudroidLanMuted, fontSize = 11.sp)
+                                    Text(
+                                        "Jogador ${player.playerNumber} • " +
+                                            if (player.controllerKind == "WIIMOTE") "Wii Remote" else "Pro Controller",
+                                        color = WudroidLanMuted,
+                                        fontSize = 11.sp
+                                    )
                                 }
                                 Text("Conectado", color = WudroidLanGreen, fontSize = 12.sp)
                             }
