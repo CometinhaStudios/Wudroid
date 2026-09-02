@@ -14,7 +14,7 @@ if not main_path.exists():
 manifest = manifest_path.read_text()
 main = main_path.read_text()
 marker = "WUDROID_012_LOCAL_MULTIPLAYER_TEST6"
-# WUDROID_012_LOCAL_MULTIPLAYER_TEST6_BUILDFIX1
+# WUDROID_012_LOCAL_MULTIPLAYER_TEST6_BUILDFIX2
 
 permissions = [
     '    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />',
@@ -26,7 +26,7 @@ permissions = [
 # Test6 BuildFix1:
 # Never use the first ">" in the file: it normally belongs to <?xml ...?>.
 # Find the complete real <manifest ...> opening tag, which contains xmlns:android.
-manifest_open = re.search(r"<manifest\\b[^>]*>", manifest, flags=re.DOTALL)
+manifest_open = re.search(r"<manifest\b[^>]*>", manifest, flags=re.DOTALL)
 if manifest_open is None:
     raise SystemExit("Manifest opening tag malformed")
 

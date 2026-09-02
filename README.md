@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test6 BuildFix2
+
+Corrige a regex usada para localizar a tag <manifest>.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test6 BuildFix1
 
 Corrige a posição das permissões do hotspot no AndroidManifest.xml.
