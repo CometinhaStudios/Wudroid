@@ -278,7 +278,7 @@ main = main.replace(settings_sig_old, settings_sig_new, 1)
 controls_entry = '''        SettingsEntry(
             WIcon.Controller,
             "Controles",
-            "GamePad, Pro Controller e controles na tela",
+            "GamePad, Wii Remote e controles na tela",
             onControls
         )
 '''
@@ -311,7 +311,7 @@ private fun ControlsScreen(
             fontSize = 14.sp
         )
         Text(
-            "Configure até 8 jogadores. O Jogador 1 pode usar o GamePad; os demais ficam como controles adicionais.",
+            "Configure até 8 jogadores. O Jogador 1 usa GamePad ou Wii Remote; os demais podem usar controles adicionais.",
             color = WMuted,
             fontSize = 13.sp,
             lineHeight = 18.sp
@@ -402,15 +402,13 @@ private fun ControllerPlayerScreen(
             val choices = if (controllerIndex == 0) {
                 listOf(
                     NativeInput.EmulatedControllerType.VPAD to "GamePad",
-                    NativeInput.EmulatedControllerType.PRO to "Pro Controller",
-                    NativeInput.EmulatedControllerType.CLASSIC to "Classic",
-                    NativeInput.EmulatedControllerType.WIIMOTE to "Wiimote"
+                    NativeInput.EmulatedControllerType.WIIMOTE to "Wii Remote"
                 )
             } else {
                 listOf(
                     NativeInput.EmulatedControllerType.PRO to "Pro Controller",
-                    NativeInput.EmulatedControllerType.CLASSIC to "Classic",
-                    NativeInput.EmulatedControllerType.WIIMOTE to "Wiimote"
+                    NativeInput.EmulatedControllerType.WIIMOTE to "Wii Remote",
+                    NativeInput.EmulatedControllerType.CLASSIC to "Classic"
                 )
             }
             ChoiceButtons(choices = choices, selected = controllerType) {
@@ -479,7 +477,7 @@ private fun controllerTypeLabel(type: Int): String = when (type) {
     NativeInput.EmulatedControllerType.VPAD -> "GamePad"
     NativeInput.EmulatedControllerType.PRO -> "Pro Controller"
     NativeInput.EmulatedControllerType.CLASSIC -> "Classic"
-    NativeInput.EmulatedControllerType.WIIMOTE -> "Wiimote"
+    NativeInput.EmulatedControllerType.WIIMOTE -> "Wii Remote"
     else -> "Desativado"
 }
 

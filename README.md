@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test5
+
+Player 1: GamePad/Wii Remote, perfil por jogo atualizado e Wii Remote horizontal. Player 2 remoto mantém Pro/Wii Remote.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test4
 
 Seleção Pro Controller / Wii Remote para Player 2 remoto.

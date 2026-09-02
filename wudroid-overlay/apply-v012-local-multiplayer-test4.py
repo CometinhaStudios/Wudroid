@@ -224,49 +224,69 @@ private fun MultiplayerScreen(onBack: () -> Unit) {
     }
 }
 
-private object RemoteWiimoteButton {
-    // Cemu WiimoteController::ButtonId values.
-    const val A = 1
-    const val B = 2
-    const val ONE = 3
-    const val TWO = 4
-    const val PLUS = 7
-    const val MINUS = 8
-    const val UP = 9
-    const val DOWN = 10
-    const val LEFT = 11
-    const val RIGHT = 12
-    const val HOME = 17
-}
-
 @Composable
 private fun RemoteLanWiimotePad() {
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = WCard), shape = RoundedCornerShape(20.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = WCard),
+        shape = RoundedCornerShape(20.dp),
+    ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Wii Remote", color = WBlue, fontWeight = FontWeight.Bold)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                RemoteLanButton("↑", RemoteWiimoteButton.UP, Modifier.size(58.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    RemoteLanButton("←", RemoteWiimoteButton.LEFT, Modifier.size(58.dp))
-                    Spacer(Modifier.size(58.dp))
-                    RemoteLanButton("→", RemoteWiimoteButton.RIGHT, Modifier.size(58.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(4.2f)
+                    .background(Color(0xFFECEFF2), RoundedCornerShape(28.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    RemoteLanButton("↑", WudroidWiimoteMapping.UP, Modifier.size(38.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        RemoteLanButton("←", WudroidWiimoteMapping.LEFT, Modifier.size(38.dp))
+                        Spacer(Modifier.size(38.dp))
+                        RemoteLanButton("→", WudroidWiimoteMapping.RIGHT, Modifier.size(38.dp))
+                    }
+                    RemoteLanButton("↓", WudroidWiimoteMapping.DOWN, Modifier.size(38.dp))
                 }
-                RemoteLanButton("↓", RemoteWiimoteButton.DOWN, Modifier.size(58.dp))
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    RemoteLanButton("A", WudroidWiimoteMapping.A, Modifier.size(58.dp))
+                    Spacer(Modifier.height(5.dp))
+                    RemoteLanButton("B", WudroidWiimoteMapping.B, Modifier.size(width = 62.dp, height = 34.dp))
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RemoteLanButton("−", WudroidWiimoteMapping.MINUS, Modifier.size(38.dp))
+                    RemoteLanButton("HOME", WudroidWiimoteMapping.HOME, Modifier.size(width = 64.dp, height = 34.dp))
+                    RemoteLanButton("+", WudroidWiimoteMapping.PLUS, Modifier.size(38.dp))
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    RemoteLanButton("1", WudroidWiimoteMapping.ONE, Modifier.size(48.dp))
+                    Spacer(Modifier.height(6.dp))
+                    RemoteLanButton("2", WudroidWiimoteMapping.TWO, Modifier.size(48.dp))
+                }
+
+                Text("Wii", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 17.sp)
             }
-            RemoteLanButton("A", RemoteWiimoteButton.A, Modifier.size(78.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RemoteLanButton("−", RemoteWiimoteButton.MINUS, Modifier.size(width = 62.dp, height = 44.dp))
-                RemoteLanButton("HOME", RemoteWiimoteButton.HOME, Modifier.size(width = 82.dp, height = 44.dp))
-                RemoteLanButton("+", RemoteWiimoteButton.PLUS, Modifier.size(width = 62.dp, height = 44.dp))
-            }
-            RemoteLanButton("B", RemoteWiimoteButton.B, Modifier.size(width = 92.dp, height = 52.dp))
-            RemoteLanButton("1", RemoteWiimoteButton.ONE, Modifier.size(width = 86.dp, height = 48.dp))
-            RemoteLanButton("2", RemoteWiimoteButton.TWO, Modifier.size(width = 86.dp, height = 48.dp))
-            Text("Movimento, MotionPlus e apontador/IR ainda não estão ativos neste Test4.", color = WMuted, fontSize = 11.sp, lineHeight = 15.sp)
+
+            Text(
+                "Wii Remote deitado • A/B/1/2/+/-/Home/D-pad. Power não é uma entrada de jogo no Cemu.",
+                color = WMuted,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
+            Text(
+                "Movimento, MotionPlus, IR e Nunchuk ficam para a etapa futura de sensores/Just Dance.",
+                color = WMuted,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
         }
     }
 }
@@ -390,9 +410,9 @@ required = [
     'joinControllerKind = "WIIMOTE"',
     'controllerKind = controllerKind',
     'RemoteLanWiimotePad()',
-    'private object RemoteWiimoteButton',
+    'WudroidWiimoteMapping.HOME',
     'const val ONE = 3',
-    'const val HOME = 17',
+    'WudroidWiimoteMapping.ONE',
 ]
 missing = [x for x in required if x not in main]
 if missing:

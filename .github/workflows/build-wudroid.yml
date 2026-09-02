@@ -111,6 +111,8 @@ jobs:
           cp wudroid-overlay/WudroidShaderPreload.kt "$JAVA/WudroidShaderPreload.kt"
           cp wudroid-overlay/WudroidKeyboardMouse.kt "$JAVA/emulation/WudroidKeyboardMouse.kt"
           cp wudroid-overlay/WudroidLanMultiplayer.kt "$JAVA/WudroidLanMultiplayer.kt"
+          cp wudroid-overlay/WudroidWiimoteMapping.kt "$JAVA/WudroidWiimoteMapping.kt"
+          cp wudroid-overlay/WudroidSoloWiimoteOverlay.kt "$JAVA/emulation/WudroidSoloWiimoteOverlay.kt"
           cp wudroid-overlay/WudroidLanHostDialog.kt "$JAVA/emulation/WudroidLanHostDialog.kt"
           mkdir -p "$JAVA/settings/input/controller"
           cp wudroid-overlay/WudroidKeyboardMouseSettings.kt \
@@ -148,6 +150,7 @@ jobs:
           python3 wudroid-overlay/apply-v012-local-multiplayer-test2.py
           python3 wudroid-overlay/apply-v012-local-multiplayer-test3.py
           python3 wudroid-overlay/apply-v012-local-multiplayer-test4.py
+          python3 wudroid-overlay/apply-v012-local-multiplayer-test5.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -158,9 +161,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 33', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 34', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.2-local-multiplayer-test4"', s)
+                     'versionName = "0.1.2-local-multiplayer-test5"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -219,21 +222,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.2-LocalMultiplayer-Test4-aligned.apk
+            "$APK" out/Wudroid-0.1.2-LocalMultiplayer-Test5-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.2-LocalMultiplayer-Test4.apk \
-            out/Wudroid-0.1.2-LocalMultiplayer-Test4-aligned.apk
+            --out out/Wudroid-0.1.2-LocalMultiplayer-Test5.apk \
+            out/Wudroid-0.1.2-LocalMultiplayer-Test5-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.2-LocalMultiplayer-Test4.apk
+            out/Wudroid-0.1.2-LocalMultiplayer-Test5.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.2-LocalMultiplayer-Test4-APK
-          path: out/Wudroid-0.1.2-LocalMultiplayer-Test4.apk
+          name: Wudroid-0.1.2-LocalMultiplayer-Test5-APK
+          path: out/Wudroid-0.1.2-LocalMultiplayer-Test5.apk
           if-no-files-found: error
           compression-level: 0

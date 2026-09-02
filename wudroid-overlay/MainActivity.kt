@@ -1080,7 +1080,7 @@ private fun ControlsScreen(onBack: () -> Unit) {
         Text("${alpha.roundToInt()}/255", color = WMuted, fontSize = 12.sp)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Dica: segure um jogo na biblioteca para definir GamePad ou Pro Controller só para ele.",
+            "Dica: segure um jogo na biblioteca para definir GamePad ou Wii Remote só para ele.",
             color = WMuted,
             fontSize = 13.sp
         )
@@ -1489,7 +1489,13 @@ private fun GameProfileDialog(
         else NativeInput.getControllerType(0)
     }
     var controller by remember {
-        mutableIntStateOf(prefs.getInt("controller_${game.titleId}", defaultType))
+        val storedType = prefs.getInt("controller_${game.titleId}", defaultType)
+        mutableIntStateOf(
+            if (storedType == NativeInput.EmulatedControllerType.WIIMOTE)
+                NativeInput.EmulatedControllerType.WIIMOTE
+            else
+                NativeInput.EmulatedControllerType.VPAD
+        )
     }
     var cpuMode by remember {
         mutableIntStateOf(safeInt { NativeGameTitles.getCpuModeForTitle(game.titleId) })
@@ -1505,7 +1511,7 @@ private fun GameProfileDialog(
                 ChoiceButtons(
                     choices = listOf(
                         NativeInput.EmulatedControllerType.VPAD to "GamePad",
-                        NativeInput.EmulatedControllerType.PRO to "Pro"
+                        NativeInput.EmulatedControllerType.WIIMOTE to "Wii Remote"
                     ),
                     selected = controller
                 ) {
