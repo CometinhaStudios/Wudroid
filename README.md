@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test3
+
+Test3 adiciona controle remoto LAN do Cliente como Player 2 do Host. Streaming de tela continua para a próxima etapa.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test2
 
 Perfil + lobby LAN V2. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST2.md`.

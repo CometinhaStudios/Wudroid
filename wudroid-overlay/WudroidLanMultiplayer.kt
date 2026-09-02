@@ -1,6 +1,9 @@
 package info.cemu.cemu
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import info.cemu.cemu.nativeinterface.NativeInput
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.Inet4Address
@@ -11,6 +14,7 @@ import java.net.SocketTimeoutException
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 data class WudroidProfile(
@@ -91,12 +95,23 @@ object WudroidLanMultiplayer {
     private const val JOIN_V2 = "WUDROID_JOIN_V2"
     private const val JOINED_V2 = "WUDROID_JOINED_V2"
     private const val REJECT_V2 = "WUDROID_REJECT_V2"
+    private const val INPUT_BUTTON_V3 = "WUDROID_INPUT_BUTTON_V3"
+    private const val INPUT_STICKS_V3 = "WUDROID_INPUT_STICKS_V3"
+    private const val LEAVE_V3 = "WUDROID_LEAVE_V3"
 
     private val running = AtomicBoolean(false)
     @Volatile private var hostSocket: DatagramSocket? = null
     @Volatile private var hostThread: Thread? = null
     @Volatile private var currentRoom: WudroidRoomConfig? = null
     private val participants = ConcurrentHashMap<String, WudroidLanParticipant>()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val clientInputExecutor = Executors.newSingleThreadExecutor { task ->
+        Thread(task, "Wudroid-LAN-Input-Client").apply { isDaemon = true }
+    }
+    @Volatile private var clientSocket: DatagramSocket? = null
+    @Volatile private var joinedHostAddress: InetAddress? = null
+    @Volatile private var joinedHostId: String = ""
+    @Volatile private var joinedClientId: String = ""
 
     @Synchronized
     fun startHost(
@@ -146,6 +161,56 @@ object WudroidLanMultiplayer {
                                 reply(socket, packet, payload)
                             }
 
+                            text.startsWith("$INPUT_BUTTON_V3|") -> {
+                                val parts = text.split("|", limit = 4)
+                                if (parts.size >= 4) {
+                                    val clientId = clean(parts[1])
+                                    val mappingId = parts[2].toIntOrNull()
+                                    val pressed = parts[3] == "1"
+                                    if (participants.containsKey(clientId) &&
+                                        mappingId != null &&
+                                        mappingId in NativeInput.ProButton.A..NativeInput.ProButton.STICKR
+                                    ) {
+                                        mainHandler.post {
+                                            runCatching {
+                                                NativeInput.onOverlayButton(1, mappingId, pressed)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            text.startsWith("$INPUT_STICKS_V3|") -> {
+                                val parts = text.split("|", limit = 6)
+                                if (parts.size >= 6) {
+                                    val clientId = clean(parts[1])
+                                    val lx = parts[2].toFloatOrNull()
+                                    val ly = parts[3].toFloatOrNull()
+                                    val rx = parts[4].toFloatOrNull()
+                                    val ry = parts[5].toFloatOrNull()
+                                    if (participants.containsKey(clientId) &&
+                                        lx != null && ly != null && rx != null && ry != null
+                                    ) {
+                                        applyRemoteSticks(
+                                            lx.coerceIn(-1f, 1f),
+                                            ly.coerceIn(-1f, 1f),
+                                            rx.coerceIn(-1f, 1f),
+                                            ry.coerceIn(-1f, 1f),
+                                        )
+                                    }
+                                }
+                            }
+
+                            text.startsWith("$LEAVE_V3|") -> {
+                                val parts = text.split("|", limit = 2)
+                                if (parts.size >= 2) {
+                                    val clientId = clean(parts[1])
+                                    if (participants.remove(clientId) != null) {
+                                        releaseRemoteController()
+                                    }
+                                }
+                            }
+
                             text.startsWith("$JOIN_V2|") -> {
                                 val parts = text.split("|", limit = 5)
                                 if (parts.size >= 5) {
@@ -165,6 +230,14 @@ object WudroidLanMultiplayer {
                                             playerNumber = 2,
                                         )
                                         participants[clientId] = participant
+                                        mainHandler.post {
+                                            runCatching {
+                                                NativeInput.setControllerType(
+                                                    1,
+                                                    NativeInput.EmulatedControllerType.PRO
+                                                )
+                                            }
+                                        }
                                         reply(socket, packet, "$JOINED_V2|${clean(currentProfile.localId)}|${participant.playerNumber}")
                                     }
                                 }
@@ -197,6 +270,7 @@ object WudroidLanMultiplayer {
 
     @Synchronized
     fun stopHost() {
+        releaseRemoteController()
         running.set(false)
         runCatching { hostSocket?.close() }
         hostSocket = null
@@ -259,38 +333,159 @@ object WudroidLanMultiplayer {
         timeoutMs: Int = 1500,
     ): WudroidJoinResult {
         val profile = WudroidProfileStore.load(context.applicationContext)
+        leaveHost(notifyHost = false)
+
+        var socket: DatagramSocket? = null
         return try {
-            DatagramSocket().use { socket ->
-                socket.soTimeout = timeoutMs
-                val suppliedHash = if (host.isPrivate) hashPassword(password) else ""
-                val payload = listOf(
-                    JOIN_V2,
-                    clean(profile.localId),
-                    clean(profile.nickname),
-                    suppliedHash,
-                    "2",
-                ).joinToString("|")
-                val bytes = payload.toByteArray(Charsets.UTF_8)
-                socket.send(DatagramPacket(bytes, bytes.size, InetAddress.getByName(host.address), PORT))
+            socket = DatagramSocket().apply {
+                soTimeout = timeoutMs
+            }
 
-                val buffer = ByteArray(700)
-                val reply = DatagramPacket(buffer, buffer.size)
-                socket.receive(reply)
-                val text = String(reply.data, 0, reply.length, Charsets.UTF_8)
-                val parts = text.split("|")
+            val suppliedHash = if (host.isPrivate) hashPassword(password) else ""
+            val payload = listOf(
+                JOIN_V2,
+                clean(profile.localId),
+                clean(profile.nickname),
+                suppliedHash,
+                "2",
+            ).joinToString("|")
+            val bytes = payload.toByteArray(Charsets.UTF_8)
+            socket.send(
+                DatagramPacket(
+                    bytes,
+                    bytes.size,
+                    InetAddress.getByName(host.address),
+                    PORT,
+                )
+            )
 
-                when {
-                    parts.size >= 3 && parts[0] == JOINED_V2 && parts[1] == host.hostId ->
-                        WudroidJoinResult(WudroidJoinStatus.SUCCESS, parts[2].toIntOrNull() ?: 2)
-                    parts.size >= 2 && parts[0] == REJECT_V2 && parts[1] == "WRONG_PASSWORD" ->
-                        WudroidJoinResult(WudroidJoinStatus.WRONG_PASSWORD)
-                    parts.size >= 2 && parts[0] == REJECT_V2 && parts[1] == "FULL" ->
-                        WudroidJoinResult(WudroidJoinStatus.FULL)
-                    else -> WudroidJoinResult(WudroidJoinStatus.FAILED)
+            val buffer = ByteArray(700)
+            val response = DatagramPacket(buffer, buffer.size)
+            socket.receive(response)
+            val text = String(response.data, 0, response.length, Charsets.UTF_8)
+            val parts = text.split("|")
+
+            when {
+                parts.size >= 3 && parts[0] == JOINED_V2 && parts[1] == host.hostId -> {
+                    socket.soTimeout = 0
+                    clientSocket = socket
+                    joinedHostAddress = InetAddress.getByName(host.address)
+                    joinedHostId = host.hostId
+                    joinedClientId = profile.localId
+                    socket = null
+                    WudroidJoinResult(
+                        WudroidJoinStatus.SUCCESS,
+                        parts[2].toIntOrNull() ?: 2,
+                    )
                 }
+
+                parts.size >= 2 && parts[0] == REJECT_V2 && parts[1] == "WRONG_PASSWORD" ->
+                    WudroidJoinResult(WudroidJoinStatus.WRONG_PASSWORD)
+
+                parts.size >= 2 && parts[0] == REJECT_V2 && parts[1] == "FULL" ->
+                    WudroidJoinResult(WudroidJoinStatus.FULL)
+
+                else -> WudroidJoinResult(WudroidJoinStatus.FAILED)
             }
         } catch (_: Throwable) {
             WudroidJoinResult(WudroidJoinStatus.FAILED)
+        } finally {
+            runCatching { socket?.close() }
+        }
+    }
+
+    fun isJoinedAsClient(): Boolean =
+        clientSocket != null && joinedHostAddress != null && joinedClientId.isNotBlank()
+
+    fun sendRemoteButton(mappingId: Int, pressed: Boolean) {
+        if (mappingId !in NativeInput.ProButton.A..NativeInput.ProButton.STICKR) return
+        val clientId = joinedClientId
+        if (clientId.isBlank()) return
+        val packet = listOf(
+            INPUT_BUTTON_V3,
+            clean(clientId),
+            mappingId.toString(),
+            if (pressed) "1" else "0",
+        ).joinToString("|")
+        sendClientInput(packet)
+    }
+
+    fun sendRemoteSticks(lx: Float, ly: Float, rx: Float, ry: Float) {
+        val clientId = joinedClientId
+        if (clientId.isBlank()) return
+        val packet = listOf(
+            INPUT_STICKS_V3,
+            clean(clientId),
+            lx.coerceIn(-1f, 1f).toString(),
+            ly.coerceIn(-1f, 1f).toString(),
+            rx.coerceIn(-1f, 1f).toString(),
+            ry.coerceIn(-1f, 1f).toString(),
+        ).joinToString("|")
+        sendClientInput(packet)
+    }
+
+    fun leaveHost(notifyHost: Boolean = true) {
+        val socket = clientSocket
+        val address = joinedHostAddress
+        val clientId = joinedClientId
+
+        if (notifyHost && socket != null && address != null && clientId.isNotBlank()) {
+            runCatching {
+                val text = "$LEAVE_V3|${clean(clientId)}"
+                val bytes = text.toByteArray(Charsets.UTF_8)
+                socket.send(DatagramPacket(bytes, bytes.size, address, PORT))
+            }
+        }
+
+        clientSocket = null
+        joinedHostAddress = null
+        joinedHostId = ""
+        joinedClientId = ""
+        runCatching { socket?.close() }
+    }
+
+    private fun sendClientInput(text: String) {
+        val socket = clientSocket ?: return
+        val address = joinedHostAddress ?: return
+
+        clientInputExecutor.execute {
+            runCatching {
+                val bytes = text.toByteArray(Charsets.UTF_8)
+                socket.send(DatagramPacket(bytes, bytes.size, address, PORT))
+            }
+        }
+    }
+
+    private fun applyRemoteSticks(lx: Float, ly: Float, rx: Float, ry: Float) {
+        mainHandler.post {
+            runCatching {
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKL_LEFT, (-lx).coerceAtLeast(0f))
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKL_RIGHT, lx.coerceAtLeast(0f))
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKL_UP, (-ly).coerceAtLeast(0f))
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKL_DOWN, ly.coerceAtLeast(0f))
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_LEFT, (-rx).coerceAtLeast(0f))
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_RIGHT, rx.coerceAtLeast(0f))
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_UP, (-ry).coerceAtLeast(0f))
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_DOWN, ry.coerceAtLeast(0f))
+            }
+        }
+    }
+
+    private fun releaseRemoteController() {
+        mainHandler.post {
+            runCatching {
+                for (mappingId in NativeInput.ProButton.A..NativeInput.ProButton.STICKR) {
+                    NativeInput.onOverlayButton(1, mappingId, false)
+                }
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKL_LEFT, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKL_RIGHT, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKL_UP, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKL_DOWN, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_LEFT, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_RIGHT, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_UP, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_DOWN, 0f)
+            }
         }
     }
 
