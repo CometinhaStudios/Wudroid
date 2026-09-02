@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test6 BuildFix1
+
+Corrige a posição das permissões do hotspot no AndroidManifest.xml.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test6
 
 Test6 corrige o D-pad do Wii Remote horizontal, remove a carcaça branca e adiciona Wi-Fi local criado pelo Host.
