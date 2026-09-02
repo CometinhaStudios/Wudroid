@@ -14,7 +14,7 @@ main = main_path.read_text()
 screen = screen_path.read_text()
 manifest = manifest_path.read_text()
 marker = 'WUDROID_012_LOCAL_MULTIPLAYER_TEST1'
-# WUDROID_012_LOCAL_MULTIPLAYER_TEST5_BUILDFIX1
+# WUDROID_012_LOCAL_MULTIPLAYER_TEST5_BUILDFIX2
 # WUDROID_012_LOCAL_MULTIPLAYER_TEST1_BUILDFIX4
 
 if marker in main:
@@ -276,12 +276,12 @@ if settings_sig_old not in main:
     raise SystemExit('Settings signature anchor missing')
 main = main.replace(settings_sig_old, settings_sig_new, 1)
 
-# Test5 BuildFix1: locate Settings -> Controles structurally.
-settings_fun_start = main.find("@Composable\\nprivate fun SettingsScreen(")
+# Test5 BuildFix2: locate Settings -> Controles structurally using REAL newlines.
+settings_fun_start = main.find("@Composable\nprivate fun SettingsScreen(")
 if settings_fun_start < 0:
     raise SystemExit("SettingsScreen function missing")
 
-settings_fun_end = main.find("\\n@Composable\\n", settings_fun_start + 1)
+settings_fun_end = main.find("\n@Composable\n", settings_fun_start + 1)
 if settings_fun_end < 0:
     settings_fun_end = len(main)
 
@@ -307,7 +307,7 @@ if '"Perfil"' not in settings_block:
         if in_string:
             if escaped:
                 escaped = False
-            elif ch == "\\\\":
+            elif ch == "\\":
                 escaped = True
             elif ch == '"':
                 in_string = False
@@ -330,30 +330,37 @@ if '"Perfil"' not in settings_block:
     if "onControls" not in controls_entry_found:
         raise SystemExit("Settings Controls entry callback missing")
 
-    if entry_end < len(settings_block) and settings_block[entry_end] == "\\n":
+    if entry_end < len(settings_block) and settings_block[entry_end] == "\n":
         entry_end += 1
 
-    profile_entry = (
-        '        SettingsEntry(\\n'
-        '            WIcon.App,\\n'
-        '            "Perfil",\\n'
-        '            "Nome do jogador e nome da hospedagem local",\\n'
-        '            onProfile\\n'
-        '        )\\n'
+    profile_entry = '''        SettingsEntry(
+            WIcon.App,
+            "Perfil",
+            "Nome do jogador e nome da hospedagem local",
+            onProfile
+        )
+'''
+
+    settings_block = (
+        settings_block[:entry_end]
+        + profile_entry
+        + settings_block[entry_end:]
+    )
+    main = (
+        main[:settings_fun_start]
+        + settings_block
+        + main[settings_fun_end:]
     )
 
-    settings_block = settings_block[:entry_end] + profile_entry + settings_block[entry_end:]
-    main = main[:settings_fun_start] + settings_block + main[settings_fun_end:]
-
-verify_start = main.find("@Composable\\nprivate fun SettingsScreen(")
-verify_end = main.find("\\n@Composable\\n", verify_start + 1)
+verify_start = main.find("@Composable\nprivate fun SettingsScreen(")
+verify_end = main.find("\n@Composable\n", verify_start + 1)
 if verify_end < 0:
     verify_end = len(main)
 verify_settings = main[verify_start:verify_end]
 
 for required in ('"Controles"', 'onControls', '"Perfil"', 'onProfile'):
     if required not in verify_settings:
-        raise SystemExit(f"Settings BuildFix1 verification failed: {required}")
+        raise SystemExit(f"Settings BuildFix2 verification failed: {required}")
 
 
 start = main.find('@Composable\nprivate fun ControlsScreen(')

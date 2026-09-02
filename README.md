@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test5 BuildFix2
+
+Corrige as quebras de linha literais do BuildFix1.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test5 BuildFix1
 
 Corrige o Apply da entrada Controles/Perfil sem reverter o Test5.
