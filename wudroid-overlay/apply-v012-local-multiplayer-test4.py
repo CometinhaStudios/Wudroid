@@ -227,68 +227,52 @@ private fun MultiplayerScreen(onBack: () -> Unit) {
 
 @Composable
 private fun RemoteLanWiimotePad() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = WCard),
-        shape = RoundedCornerShape(20.dp),
+    // Test6: sem carcaça branca; somente os botões do Wii Remote.
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(4.2f)
-                    .background(Color(0xFFECEFF2), RoundedCornerShape(28.dp))
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    RemoteLanButton("↑", WudroidWiimoteMapping.UP, Modifier.size(38.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        RemoteLanButton("←", WudroidWiimoteMapping.LEFT, Modifier.size(38.dp))
-                        Spacer(Modifier.size(38.dp))
-                        RemoteLanButton("→", WudroidWiimoteMapping.RIGHT, Modifier.size(38.dp))
-                    }
-                    RemoteLanButton("↓", WudroidWiimoteMapping.DOWN, Modifier.size(38.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Wii Remote deitado: direção visual corrigida.
+                RemoteLanButton("↑", WudroidWiimoteMapping.RIGHT, Modifier.size(38.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    RemoteLanButton("←", WudroidWiimoteMapping.UP, Modifier.size(38.dp))
+                    Spacer(Modifier.size(38.dp))
+                    RemoteLanButton("→", WudroidWiimoteMapping.DOWN, Modifier.size(38.dp))
                 }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    RemoteLanButton("A", WudroidWiimoteMapping.A, Modifier.size(58.dp))
-                    Spacer(Modifier.height(5.dp))
-                    RemoteLanButton("B", WudroidWiimoteMapping.B, Modifier.size(width = 62.dp, height = 34.dp))
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RemoteLanButton("−", WudroidWiimoteMapping.MINUS, Modifier.size(38.dp))
-                    RemoteLanButton("HOME", WudroidWiimoteMapping.HOME, Modifier.size(width = 64.dp, height = 34.dp))
-                    RemoteLanButton("+", WudroidWiimoteMapping.PLUS, Modifier.size(38.dp))
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    RemoteLanButton("1", WudroidWiimoteMapping.ONE, Modifier.size(48.dp))
-                    Spacer(Modifier.height(6.dp))
-                    RemoteLanButton("2", WudroidWiimoteMapping.TWO, Modifier.size(48.dp))
-                }
-
-                Text("Wii", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                RemoteLanButton("↓", WudroidWiimoteMapping.LEFT, Modifier.size(38.dp))
             }
 
-            Text(
-                "Wii Remote deitado • A/B/1/2/+/-/Home/D-pad. Power não é uma entrada de jogo no Cemu.",
-                color = WMuted,
-                fontSize = 11.sp,
-                lineHeight = 15.sp,
-            )
-            Text(
-                "Movimento, MotionPlus, IR e Nunchuk ficam para a etapa futura de sensores/Just Dance.",
-                color = WMuted,
-                fontSize = 11.sp,
-                lineHeight = 15.sp,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                RemoteLanButton("A", WudroidWiimoteMapping.A, Modifier.size(58.dp))
+                Spacer(Modifier.height(5.dp))
+                RemoteLanButton("B", WudroidWiimoteMapping.B, Modifier.size(width = 62.dp, height = 34.dp))
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                RemoteLanButton("−", WudroidWiimoteMapping.MINUS, Modifier.size(38.dp))
+                RemoteLanButton("HOME", WudroidWiimoteMapping.HOME, Modifier.size(width = 64.dp, height = 34.dp))
+                RemoteLanButton("+", WudroidWiimoteMapping.PLUS, Modifier.size(38.dp))
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                RemoteLanButton("1", WudroidWiimoteMapping.ONE, Modifier.size(48.dp))
+                Spacer(Modifier.height(6.dp))
+                RemoteLanButton("2", WudroidWiimoteMapping.TWO, Modifier.size(48.dp))
+            }
         }
+
+        Text(
+            "Wii Remote deitado • movimento/IR ficam para a etapa de sensores.",
+            color = WMuted,
+            fontSize = 11.sp,
+            lineHeight = 15.sp,
+        )
     }
 }
 

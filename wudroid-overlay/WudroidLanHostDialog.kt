@@ -35,6 +35,9 @@ import info.cemu.cemu.WudroidLanMultiplayer
 import info.cemu.cemu.WudroidProfileStore
 import info.cemu.cemu.WudroidRoomConfig
 import kotlinx.coroutines.delay
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import info.cemu.cemu.WudroidLocalHotspot
 
 private val WudroidLanBlue = Color(0xFF00B8F5)
 private val WudroidLanCard = Color(0xFF171B20)
@@ -54,6 +57,18 @@ fun WudroidLanHostDialog(
     var hosting by remember { mutableStateOf(WudroidLanMultiplayer.isHosting()) }
     var error by remember { mutableStateOf<String?>(null) }
     var participants by remember { mutableStateOf(WudroidLanMultiplayer.participants()) }
+    var hotspotState by remember { mutableStateOf(WudroidLocalHotspot.state()) }
+
+    val hotspotPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            WudroidLocalHotspot.start(context)
+        } else {
+            error = "Permissão de Wi-Fi negada"
+        }
+    }
+
 
     LaunchedEffect(hosting) {
         while (hosting) {
@@ -62,8 +77,20 @@ fun WudroidLanHostDialog(
         }
     }
 
+    LaunchedEffect(Unit) {
+        while (true) {
+            hotspotState = WudroidLocalHotspot.state()
+            delay(350L)
+        }
+    }
+
     AlertDialog(
-        onDismissRequest = { if (!hosting) onClose() },
+        onDismissRequest = {
+            if (!hosting) {
+                WudroidLocalHotspot.stop()
+                onClose()
+            }
+        },
         title = {
             Text(if (hosting) "Multiplayer" else "Criar multiplayer", fontWeight = FontWeight.Bold)
         },
@@ -71,6 +98,80 @@ fun WudroidLanHostDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!hosting) {
                     Text("Host: ${profile.nickname}", color = WudroidLanMuted, fontSize = 13.sp)
+
+                    Text("Conexão", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+
+                    if (hotspotState.active) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(WudroidLanCard, RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text("Wi-Fi do Host ativo", color = WudroidLanGreen, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Rede: ${hotspotState.ssid.ifBlank { "Wudroid Hotspot" }}",
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                "Senha: ${hotspotState.password.ifBlank { "Sem senha" }}",
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                "No Player 2: conecte neste Wi-Fi e volte em Multiplayer.",
+                                color = WudroidLanMuted,
+                                fontSize = 11.sp,
+                            )
+                        }
+
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { WudroidLocalHotspot.stop() },
+                            colors = ButtonDefaults.buttonColors(containerColor = WudroidLanCard),
+                        ) {
+                            Text("Desligar Wi-Fi do Host", color = Color.White)
+                        }
+                    } else {
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !hotspotState.starting,
+                            onClick = {
+                                error = null
+                                if (WudroidLocalHotspot.hasRuntimePermission(context)) {
+                                    WudroidLocalHotspot.start(context)
+                                } else {
+                                    hotspotPermissionLauncher.launch(
+                                        WudroidLocalHotspot.requiredRuntimePermission()
+                                    )
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = WudroidLanCard),
+                        ) {
+                            if (hotspotState.starting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = WudroidLanBlue
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("Criando Wi-Fi do Host…", color = Color.White)
+                            } else {
+                                Text("Criar Wi-Fi do Host", color = Color.White)
+                            }
+                        }
+
+                        Text(
+                            "Ou use normalmente o mesmo Wi-Fi/roteador nos dois aparelhos.",
+                            color = WudroidLanMuted,
+                            fontSize = 11.sp,
+                        )
+                    }
+
+                    if (hotspotState.error != null) {
+                        Text(hotspotState.error!!, color = Color(0xFFFF5A63), fontSize = 12.sp)
+                    }
+
                     OutlinedTextField(
                         modifier = Modifier.fillMaxWidth(),
                         value = roomName,
@@ -183,7 +284,11 @@ fun WudroidLanHostDialog(
         dismissButton = {
             Button(
                 onClick = {
-                    if (hosting) WudroidLanMultiplayer.stopHost()
+                    if (hosting) {
+                        WudroidLanMultiplayer.stopHost()
+                    } else {
+                        WudroidLocalHotspot.stop()
+                    }
                     onClose()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = WudroidLanCard),

@@ -282,6 +282,7 @@ object WudroidLanMultiplayer {
 
     @Synchronized
     fun stopHost() {
+        WudroidLocalHotspot.stop()
         releaseRemoteController()
         running.set(false)
         runCatching { hostSocket?.close() }

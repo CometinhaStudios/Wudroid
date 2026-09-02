@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import info.cemu.cemu.WudroidWiimoteMapping
 import info.cemu.cemu.nativeinterface.NativeInput
 
-private val WiiShell = Color(0xCCECEFF2)
 private val WiiButton = Color(0xFFCCD0D5)
 private val WiiPressed = Color(0xFF16B9E8)
 private val WiiInk = Color(0xFF25282C)
@@ -52,8 +50,6 @@ fun WudroidSoloWiimoteOverlay(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(4.35f)
-                .background(WiiShell, RoundedCornerShape(30.dp))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -85,14 +81,16 @@ fun WudroidSoloWiimoteOverlay(
 
 @Composable
 private fun WiiDpad(controllerIndex: Int) {
+    // Wii Remote deitado: os eixos físicos do D-pad ficam rotacionados 90°.
+    // Mapeamos pela direção VISUAL que o jogador vê na tela.
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        WiiButton("↑", WudroidWiimoteMapping.UP, controllerIndex, Modifier.size(38.dp))
+        WiiButton("↑", WudroidWiimoteMapping.RIGHT, controllerIndex, Modifier.size(38.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            WiiButton("←", WudroidWiimoteMapping.LEFT, controllerIndex, Modifier.size(38.dp))
-            Box(Modifier.size(38.dp).background(WiiButton, RoundedCornerShape(5.dp)))
-            WiiButton("→", WudroidWiimoteMapping.RIGHT, controllerIndex, Modifier.size(38.dp))
+            WiiButton("←", WudroidWiimoteMapping.UP, controllerIndex, Modifier.size(38.dp))
+            Spacer(Modifier.size(38.dp))
+            WiiButton("→", WudroidWiimoteMapping.DOWN, controllerIndex, Modifier.size(38.dp))
         }
-        WiiButton("↓", WudroidWiimoteMapping.DOWN, controllerIndex, Modifier.size(38.dp))
+        WiiButton("↓", WudroidWiimoteMapping.LEFT, controllerIndex, Modifier.size(38.dp))
     }
 }
 

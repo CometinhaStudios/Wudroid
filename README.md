@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test6
+
+Test6 corrige o D-pad do Wii Remote horizontal, remove a carcaça branca e adiciona Wi-Fi local criado pelo Host.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test5 BuildFix3
 
 Corrige a verificação antiga do mapeamento Wii Remote no patch Test4.
