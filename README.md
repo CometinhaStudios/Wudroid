@@ -1,3 +1,7 @@
+# STATUS ATUAL: Turbo Test13 BuildFix6
+
+Corrige a ordem do patch da configuração inicial sem quebrar WUX/biblioteca. Veja `README-TURBO-TEST13-BUILDFIX6.md`.
+
 # STATUS ATUAL: Turbo Test13 BuildFix5
 
 Corrige a tela inicial e reforça o Turbo 3× sem voltar o projeto para snapshot antigo.

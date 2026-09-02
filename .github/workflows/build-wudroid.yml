@@ -141,6 +141,7 @@ jobs:
           python3 wudroid-overlay/apply-v011s-savestation.py
           python3 wudroid-overlay/apply-v011t-savestation-runtimefix.py
           python3 wudroid-overlay/apply-v011u-turbo-test13.py
+          python3 wudroid-overlay/apply-v011v-turbo-test13-buildfix6-setup.py
 
           python3 - <<'PY'
           from pathlib import Path

@@ -1,4 +1,4 @@
-# WUDROID_TURBO_TEST13_BUILDFIX5
+# WUDROID_TURBO_TEST13_BUILDFIX6
 # BuildFix4: this Cemu revision exposes timer speed through
 # ActiveSettings::SetTimerShiftFactor(), not a public TimerShiftFactor field.
 #!/usr/bin/env python3
@@ -219,7 +219,7 @@ checks = {
         'import kotlinx.coroutines.delay',
         'Box(modifier = Modifier.fillMaxSize())',
         'text = "⚡"',
-        'text = if (enabled) "3×" else "1×"',
+        'text = if (enabled) "${backendFactor}×" else "1×"',
         'NativeEmulation.setFastForwardEnabled(wudroidTurboEnabled)',
         'detectDragGestures(',
         'getSharedPreferences("wudroid_turbo"',
