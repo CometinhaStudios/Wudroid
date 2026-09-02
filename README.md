@@ -1,3 +1,7 @@
+# STATUS ATUAL: Turbo Test13 BuildFix5
+
+Corrige a tela inicial e reforça o Turbo 3× sem voltar o projeto para snapshot antigo.
+
 # STATUS ATUAL: Turbo Test13 BuildFix4
 
 Corrige o backend do Turbo para usar `ActiveSettings::SetTimerShiftFactor()` nesta revisão do Cemu. Veja `README-TURBO-TEST13-BUILDFIX4.md`.

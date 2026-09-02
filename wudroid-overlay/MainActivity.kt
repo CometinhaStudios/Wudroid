@@ -213,6 +213,10 @@ private fun WudroidRoot() {
     var screen by remember { mutableStateOf(Screen.Library) }
     var keysMessage by remember { mutableStateOf<String?>(null) }
     var selectedProfileGame by remember { mutableStateOf<Game?>(null) }
+    // WUDROID_TURBO_TEST13_BUILDFIX5_SETUP
+    // Keep setup status in Compose state so SAF results turn green immediately.
+    var setupKeysPresent by remember { mutableStateOf(hasImportedKeys()) }
+    var setupFolderPresent by remember { mutableStateOf(safeGamePaths().isNotEmpty()) }
 
     val keysLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -220,6 +224,7 @@ private fun WudroidRoot() {
         if (uri != null) {
             val result = importKeysFile(context, uri)
             keysMessage = result.second
+            if (result.first) setupKeysPresent = true
         }
     }
 
@@ -228,17 +233,24 @@ private fun WudroidRoot() {
     val folderLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
-        if (uri != null && addGameFolder(context, uri)) {
-            // Do not reload native titles inside the SAF callback.
-            // Let the ViewModel refresh after the picker has returned.
-            refreshLibraryRequest++
+        if (uri != null) {
+            val added = addGameFolder(context, uri)
+            // WUDROID_TURBO_TEST13_BUILDFIX5_SETUP
+            // A successful selection must turn the setup card green immediately.
+            // Existing configured paths also count as confirmed.
+            setupFolderPresent = added || safeGamePaths().isNotEmpty()
+            if (added) {
+                // Do not reload native titles inside the SAF callback.
+                // Let the ViewModel refresh after the picker has returned.
+                refreshLibraryRequest++
+            }
         }
     }
 
     if (!setupDone) {
         SetupWizard(
-            keysPresent = hasImportedKeys(),
-            gameFolderPresent = safeGamePaths().isNotEmpty(),
+            keysPresent = setupKeysPresent,
+            gameFolderPresent = setupFolderPresent,
             keysMessage = keysMessage,
             onImportKeys = {
                 keysLauncher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
@@ -319,7 +331,8 @@ private fun SetupWizard(
     onChooseFolder: () -> Unit,
     onFinish: () -> Unit,
 ) {
-    var step by remember { mutableIntStateOf(0) }
+    // WUDROID_TURBO_TEST13_BUILDFIX5_SETUP
+    // One-screen setup: keys + game folder are visible immediately.
     val currentKeysPresent = hasImportedKeys() || keysPresent
     val currentFolderPresent = safeGamePaths().isNotEmpty() || gameFolderPresent
 
@@ -343,94 +356,67 @@ private fun SetupWizard(
                         Text("Configuração inicial", color = WMuted)
                     }
                 }
-                Spacer(Modifier.height(34.dp))
+                Spacer(Modifier.height(30.dp))
 
-                when (step) {
-                    0 -> {
-                        SetupTitle("Bem-vindo ao Wudroid")
-                        SetupBody(
-                            "Antes da primeira inicialização, vamos configurar apenas o necessário: " +
-                                "as chaves do seu próprio Wii U e a pasta onde seus jogos estão."
-                        )
-                        Spacer(Modifier.height(18.dp))
-                        StatusPill("Emulador", true, "Core ARM64 / Vulkan pronto")
-                        Spacer(Modifier.height(10.dp))
-                        StatusPill("Interface", true, "Frontend Wudroid")
-                    }
-                    1 -> {
-                        SetupTitle("Importar keys.txt")
-                        SetupBody(
-                            "Selecione o seu keys.txt. O Wudroid copia o arquivo para o diretório " +
-                                "correto do Cemu automaticamente. O Wudroid não fornece chaves."
-                        )
-                        Spacer(Modifier.height(20.dp))
-                        SetupActionCard(
-                            icon = WIcon.Key,
-                            title = "Selecionar keys.txt",
-                            subtitle = if (currentKeysPresent)
-                                "Arquivo importado e validado"
-                            else
-                                "Necessário para jogos WUD/WUX",
-                            good = currentKeysPresent,
-                            onClick = onImportKeys
-                        )
-                        if (keysMessage != null) {
-                            Spacer(Modifier.height(12.dp))
-                            Text(keysMessage, color = if (currentKeysPresent) WGreen else WRed, fontSize = 13.sp)
-                        }
-                    }
-                    2 -> {
-                        SetupTitle("Pasta dos jogos")
-                        SetupBody(
-                            "Escolha a pasta onde seus jogos Wii U estão ou serão organizados. " +
-                                "Ela ficará salva na biblioteca do Wudroid."
-                        )
-                        Spacer(Modifier.height(20.dp))
-                        SetupActionCard(
-                            icon = WIcon.Folder,
-                            title = "Selecionar pasta",
-                            subtitle = if (currentFolderPresent)
-                                "${safeGamePaths().size} pasta(s) configurada(s)"
-                            else
-                                "Nenhuma pasta configurada",
-                            good = currentFolderPresent,
-                            onClick = onChooseFolder
-                        )
-                    }
-                    else -> {
-                        SetupTitle("Tudo pronto")
-                        SetupBody(
-                            "O Wudroid já pode carregar sua biblioteca. Você pode alterar as chaves, " +
-                                "pastas, controles e configurações depois pelo menu."
-                        )
-                        Spacer(Modifier.height(18.dp))
-                        StatusPill("keys.txt", currentKeysPresent, if (currentKeysPresent) "Importada" else "Pular por enquanto")
-                        Spacer(Modifier.height(10.dp))
-                        StatusPill("Pasta de jogos", currentFolderPresent, if (currentFolderPresent) "Configurada" else "Pode adicionar depois")
-                    }
+                SetupTitle("Bem-vindo ao Wudroid")
+                SetupBody(
+                    "Antes de entrar, selecione as chaves do seu próprio Wii U e a pasta dos jogos. " +
+                        "As duas opções ficam disponíveis nesta tela."
+                )
+                Spacer(Modifier.height(20.dp))
+
+                SetupActionCard(
+                    icon = WIcon.Key,
+                    title = "Selecionar keys.txt",
+                    subtitle = if (currentKeysPresent)
+                        "Arquivo importado e validado"
+                    else
+                        "Necessário para jogos WUD/WUX",
+                    good = currentKeysPresent,
+                    onClick = onImportKeys
+                )
+
+                if (keysMessage != null) {
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        keysMessage,
+                        color = if (currentKeysPresent) WGreen else WRed,
+                        fontSize = 13.sp
+                    )
                 }
+
+                Spacer(Modifier.height(14.dp))
+                SetupActionCard(
+                    icon = WIcon.Folder,
+                    title = "Selecionar pasta de jogos",
+                    subtitle = if (currentFolderPresent)
+                        "Pasta configurada ✓"
+                    else
+                        "Nenhuma pasta configurada",
+                    good = currentFolderPresent,
+                    onClick = onChooseFolder
+                )
+
+                Spacer(Modifier.height(18.dp))
+                StatusPill(
+                    "keys.txt",
+                    currentKeysPresent,
+                    if (currentKeysPresent) "Pronta" else "Ainda não selecionada"
+                )
+                Spacer(Modifier.height(10.dp))
+                StatusPill(
+                    "Pasta de jogos",
+                    currentFolderPresent,
+                    if (currentFolderPresent) "Configurada" else "Ainda não selecionada"
+                )
             }
 
-            Row(
+            Button(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                onClick = onFinish,
+                colors = ButtonDefaults.buttonColors(containerColor = WBlue)
             ) {
-                if (step > 0) {
-                    Button(
-                        modifier = Modifier.weight(1f),
-                        onClick = { step-- },
-                        colors = ButtonDefaults.buttonColors(containerColor = WCard2)
-                    ) { Text("Voltar") }
-                }
-                Button(
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        if (step < 3) step++ else onFinish()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = WBlue)
-                ) {
-                    Text(if (step < 3) "Continuar" else "Entrar no Wudroid", color = Color.Black)
-                }
+                Text("Entrar no Wudroid", color = Color.Black)
             }
         }
     }
