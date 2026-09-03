@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test9
+
+Etapa 2: streaming H.264 / MediaCodec.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test8 BuildFix1
 
 Hook de SurfaceView corrigido sem alterar o callback original do Cemu.
