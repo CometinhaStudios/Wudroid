@@ -240,6 +240,32 @@ object WudroidLanVideoHost {
                         MediaFormat.KEY_I_FRAME_INTERVAL,
                         I_FRAME_INTERVAL_SECONDS,
                     )
+
+                    runCatching {
+                        setInteger(MediaFormat.KEY_PRIORITY, 0)
+                    }
+                    runCatching {
+                        setFloat(
+                            MediaFormat.KEY_OPERATING_RATE,
+                            VIDEO_FPS.toFloat(),
+                        )
+                    }
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        runCatching {
+                            setInteger(
+                                MediaFormat.KEY_MAX_B_FRAMES,
+                                0,
+                            )
+                        }
+                    }
+                    if (Build.VERSION.SDK_INT >= 30) {
+                        runCatching {
+                            setInteger(
+                                MediaFormat.KEY_LOW_LATENCY,
+                                1,
+                            )
+                        }
+                    }
                 }
 
             val codec = preferredEncoder()
@@ -909,6 +935,10 @@ object WudroidLanVideoClient {
     fun start(socket: DatagramSocket) {
         stop(clearStatus = true)
 
+        runCatching {
+            socket.receiveBufferSize = 384 * 1024
+        }
+
         receiverRunning.set(true)
 
         receiverThread =
@@ -970,6 +1000,8 @@ object WudroidLanVideoClient {
         val assemblies =
             LinkedHashMap<Int, Assembly>()
 
+        var latestDeliveredUnitId = 0
+
         val packetBuffer = ByteArray(1400)
 
         while (
@@ -1011,6 +1043,13 @@ object WudroidLanVideoClient {
 
                 val flags = header.int
                 val ptsUs = header.long
+
+                if (
+                    latestDeliveredUnitId > 0 &&
+                    unitId <= latestDeliveredUnitId
+                ) {
+                    continue
+                }
 
                 val width =
                     header.short.toInt() and
@@ -1101,6 +1140,17 @@ object WudroidLanVideoClient {
                     assemblies.remove(unitId)
 
                     if (complete != null) {
+                        latestDeliveredUnitId = unitId
+
+                        val staleKeys =
+                            assemblies.keys.filter {
+                                it <= latestDeliveredUnitId
+                            }
+
+                        for (key in staleKeys) {
+                            assemblies.remove(key)
+                        }
+
                         handleAccessUnit(
                             complete,
                             assembly.flags,
@@ -1111,7 +1161,7 @@ object WudroidLanVideoClient {
                     }
                 }
 
-                while (assemblies.size > 4) {
+                while (assemblies.size > 3) {
                     val first =
                         assemblies.keys
                             .firstOrNull()
@@ -1259,11 +1309,27 @@ object WudroidLanVideoClient {
                     height,
                 )
 
-            if (Build.VERSION.SDK_INT >= 30) {
+            runCatching {
                 format.setInteger(
-                    "low-latency",
-                    1,
+                    MediaFormat.KEY_PRIORITY,
+                    0,
                 )
+            }
+
+            runCatching {
+                format.setFloat(
+                    MediaFormat.KEY_OPERATING_RATE,
+                    60f,
+                )
+            }
+
+            if (Build.VERSION.SDK_INT >= 30) {
+                runCatching {
+                    format.setInteger(
+                        MediaFormat.KEY_LOW_LATENCY,
+                        1,
+                    )
+                }
             }
 
             val codec =
@@ -1378,6 +1444,8 @@ object WudroidLanVideoClient {
     private fun drainDecoderLocked(
         codec: MediaCodec,
     ) {
+        var newestIndex = -1
+
         while (true) {
             val index =
                 codec.dequeueOutputBuffer(
@@ -1387,14 +1455,23 @@ object WudroidLanVideoClient {
 
             when {
                 index >= 0 -> {
-                    codec.releaseOutputBuffer(
-                        index,
-                        true,
-                    )
+                    if (newestIndex >= 0) {
+                        codec.releaseOutputBuffer(
+                            newestIndex,
+                            false,
+                        )
+                    }
+                    newestIndex = index
                 }
 
                 index ==
                     MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                    if (newestIndex >= 0) {
+                        codec.releaseOutputBuffer(
+                            newestIndex,
+                            true,
+                        )
+                    }
                     return
                 }
 
@@ -1402,7 +1479,15 @@ object WudroidLanVideoClient {
                     MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                 }
 
-                else -> return
+                else -> {
+                    if (newestIndex >= 0) {
+                        codec.releaseOutputBuffer(
+                            newestIndex,
+                            true,
+                        )
+                    }
+                    return
+                }
             }
         }
     }
