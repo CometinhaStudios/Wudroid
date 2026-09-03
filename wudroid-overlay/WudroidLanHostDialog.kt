@@ -66,6 +66,7 @@ fun WudroidLanHostDialog(
     var error by remember { mutableStateOf<String?>(null) }
     var participants by remember { mutableStateOf(WudroidLanMultiplayer.participants()) }
     var hotspotState by remember { mutableStateOf(WudroidLocalHotspot.state()) }
+    var pendingStartUsesHostWifi by remember { mutableStateOf(false) }
 
     fun finishLanHostStart() {
         val started = WudroidLanMultiplayer.startHost(
@@ -120,10 +121,14 @@ fun WudroidLanHostDialog(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            startHostWifiThenRoom()
+            if (pendingStartUsesHostWifi) {
+                startHostWifiThenRoom()
+            } else {
+                finishLanHostStart()
+            }
         } else {
             startingHostWifi = false
-            error = "Permissão de Wi-Fi negada"
+            error = "Permissão de Dispositivos próximos necessária para o multiplayer local"
         }
     }
 
@@ -526,6 +531,7 @@ fun WudroidLanHostDialog(
                             }
 
                             useHostWifi -> {
+                                pendingStartUsesHostWifi = true
                                 if (
                                     WudroidLocalHotspot
                                         .hasRuntimePermission(context)
@@ -541,20 +547,18 @@ fun WudroidLanHostDialog(
                             }
 
                             else -> {
-                                val started =
-                                    WudroidLanMultiplayer.startHost(
-                                        context,
-                                        cleanRoom,
-                                        isPrivate,
-                                        password
+                                pendingStartUsesHostWifi = false
+                                if (
+                                    Build.VERSION.SDK_INT >= 36 &&
+                                    !WudroidLocalHotspot
+                                        .hasRuntimePermission(context)
+                                ) {
+                                    hotspotPermissionLauncher.launch(
+                                        WudroidLocalHotspot
+                                            .requiredRuntimePermission()
                                     )
-
-                                if (started) {
-                                    hosting = true
-                                    participants = emptyList()
                                 } else {
-                                    error =
-                                        "Não foi possível abrir a sala na rede local"
+                                    finishLanHostStart()
                                 }
                             }
                         }

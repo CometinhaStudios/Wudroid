@@ -121,7 +121,8 @@ object WudroidLanMultiplayer {
         isPrivate: Boolean,
         password: String,
     ): Boolean {
-        stopHost()
+        // Test7 BuildFix1: restart only UDP; keep Wi-Fi do Host alive.
+        stopHostTransport(stopHotspot = false)
         val profile = WudroidProfileStore.load(context.applicationContext)
         val cleanRoom = clean(roomName).ifBlank { "Partida de ${profile.nickname}" }.take(40)
         val passwordHash = if (isPrivate) hashPassword(password) else ""
@@ -280,9 +281,10 @@ object WudroidLanMultiplayer {
         return startHost(context, profile.roomName, false, "")
     }
 
-    @Synchronized
-    fun stopHost() {
-        WudroidLocalHotspot.stop()
+    private fun stopHostTransport(stopHotspot: Boolean) {
+        if (stopHotspot) {
+            WudroidLocalHotspot.stop()
+        }
         releaseRemoteController()
         running.set(false)
         runCatching { hostSocket?.close() }
@@ -290,6 +292,11 @@ object WudroidLanMultiplayer {
         hostThread = null
         currentRoom = null
         participants.clear()
+    }
+
+    @Synchronized
+    fun stopHost() {
+        stopHostTransport(stopHotspot = true)
     }
 
     fun isHosting(): Boolean = running.get()

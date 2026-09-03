@@ -20,6 +20,7 @@ if start < 0 or end < 0:
 new_region = r'''@Composable
 private fun MultiplayerScreen(onBack: () -> Unit) {
     // WUDROID_012_LOCAL_MULTIPLAYER_TEST4
+    // WUDROID_012_LOCAL_MULTIPLAYER_TEST7_BUILDFIX1
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var hosts by remember { mutableStateOf(emptyList<WudroidLanHost>()) }
@@ -30,6 +31,36 @@ private fun MultiplayerScreen(onBack: () -> Unit) {
     var joinDialogHost by remember { mutableStateOf<WudroidLanHost?>(null) }
     var joinPassword by remember { mutableStateOf("") }
     var joinControllerKind by remember { mutableStateOf("PRO") }
+
+    var lanPermissionGranted by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < 36 ||
+                WudroidLocalHotspot.hasRuntimePermission(context)
+        )
+    }
+
+    val lanPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        lanPermissionGranted = granted
+        status =
+            if (granted)
+                "Buscando partidas na rede"
+            else
+                "Permita Dispositivos próximos para encontrar partidas locais"
+    }
+
+    LaunchedEffect(Unit) {
+        if (
+            Build.VERSION.SDK_INT >= 36 &&
+            !WudroidLocalHotspot.hasRuntimePermission(context)
+        ) {
+            status = "Permissão de rede local necessária"
+            lanPermissionLauncher.launch(
+                WudroidLocalHotspot.requiredRuntimePermission()
+            )
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose { WudroidLanMultiplayer.leaveHost() }
@@ -70,12 +101,18 @@ private fun MultiplayerScreen(onBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(joinedHost) {
-        if (joinedHost == null) {
+    LaunchedEffect(joinedHost, lanPermissionGranted) {
+        if (joinedHost == null && lanPermissionGranted) {
             while (true) {
-                val found = withContext(Dispatchers.IO) { WudroidLanMultiplayer.scanHosts(1100) }
+                val found = withContext(Dispatchers.IO) {
+                    WudroidLanMultiplayer.scanHosts(1400)
+                }
                 hosts = found
-                if (found.isEmpty()) status = "Buscando partidas na rede"
+                status =
+                    if (found.isEmpty())
+                        "Buscando partidas na rede"
+                    else
+                        "${found.size} partida(s) encontrada(s)"
                 delay(1600L)
             }
         }
@@ -121,15 +158,52 @@ private fun MultiplayerScreen(onBack: () -> Unit) {
             ) { Text("Sair da partida", color = WText) }
         } else {
             Text(profile.nickname, color = WBlue, fontWeight = FontWeight.Bold)
+
+            if (!lanPermissionGranted) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = WCard),
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("Acesso à rede local", fontWeight = FontWeight.Bold)
+                        Text(
+                            "Permita Dispositivos próximos para o Player 2 procurar o Host nesta rede.",
+                            color = WMuted,
+                            fontSize = 12.sp,
+                        )
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                lanPermissionLauncher.launch(
+                                    WudroidLocalHotspot.requiredRuntimePermission()
+                                )
+                            },
+                        ) {
+                            Text("Permitir", color = Color.Black)
+                        }
+                    }
+                }
+            }
+
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = WBlue)
-                Spacer(Modifier.width(10.dp))
+                if (lanPermissionGranted) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = WBlue
+                    )
+                    Spacer(Modifier.width(10.dp))
+                }
                 Text(status, color = WMuted, fontSize = 13.sp)
             }
             Spacer(Modifier.height(6.dp))
             Text("Mesma rede Wi‑Fi ou hotspot do Host • Internet não é necessária", color = WMuted, fontSize = 12.sp)
 
-            if (hosts.isEmpty()) {
+            if (hosts.isEmpty() && lanPermissionGranted) {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = WCard), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(18.dp)) {
                         Text("Buscando partidas na rede…", fontWeight = FontWeight.Bold)
@@ -137,7 +211,7 @@ private fun MultiplayerScreen(onBack: () -> Unit) {
                         Text("No outro aparelho, abra um jogo e escolha Multiplayer para criar a sala.", color = WMuted, fontSize = 13.sp)
                     }
                 }
-            } else {
+            } else if (hosts.isNotEmpty()) {
                 hosts.forEach { host ->
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = WCard), shape = RoundedCornerShape(16.dp)) {
                         Column(Modifier.padding(16.dp)) {

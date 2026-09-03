@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test7 BuildFix1
+
+Corrige o ciclo de vida do hotspot e a permissão LAN do Android 16.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test7
 
 Corrige o Host Wi-Fi para sobreviver ao fechamento da janela e, no Android 16, usar o nome/segurança definidos pela própria sala.
