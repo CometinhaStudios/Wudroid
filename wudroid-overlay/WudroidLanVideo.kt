@@ -39,7 +39,7 @@ object WudroidLanVideoHost {
     private const val VIDEO_FPS = 60
     private const val VIDEO_BITRATE = 3_200_000
     private const val I_FRAME_INTERVAL_SECONDS = 1
-    private const val FRAME_INTERVAL_MS = 16L
+    private const val FRAME_INTERVAL_NS = 16_666_667L
 
     private val active = AtomicBoolean(false)
 
@@ -128,6 +128,8 @@ object WudroidLanVideoHost {
     private fun captureNext() {
         if (!active.get()) return
 
+        val captureStartedNs = System.nanoTime()
+
         val target =
             WudroidLanMultiplayer.videoTarget()
 
@@ -165,10 +167,7 @@ object WudroidLanVideoHost {
                     }
 
                     if (active.get()) {
-                        handler.postDelayed(
-                            ::captureNext,
-                            FRAME_INTERVAL_MS,
-                        )
+                        scheduleNextCapture(captureStartedNs)
                     }
                 },
                 handler,
@@ -176,6 +175,22 @@ object WudroidLanVideoHost {
         } catch (_: Throwable) {
             handler.postDelayed(::captureNext, 220L)
         }
+    }
+
+    private fun scheduleNextCapture(captureStartedNs: Long) {
+        val elapsedNs = System.nanoTime() - captureStartedNs
+        val remainingNs = FRAME_INTERVAL_NS - elapsedNs
+
+        if (remainingNs <= 0L) {
+            handler.post(::captureNext)
+            return
+        }
+
+        val delayMs =
+            ((remainingNs + 999_999L) / 1_000_000L)
+                .coerceAtLeast(1L)
+
+        handler.postDelayed(::captureNext, delayMs)
     }
 
     private fun preferredEncoder(): MediaCodec {

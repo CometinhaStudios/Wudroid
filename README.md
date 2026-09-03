@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test14
+
+Corrige a cadência real de captura para 60 Hz sem perder o ultra-low-latency do Test13. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST14.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test13
 
 Teste de ultra baixa latência 360p60 para confirmar/remover o gargalo do pipeline 720p60. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST13.md`.
