@@ -34,12 +34,12 @@ object WudroidLanVideoHost {
     private const val MAX_PACKET_PAYLOAD = 1150
     private const val MAX_ACCESS_UNIT_BYTES = 2_500_000
 
-    private const val VIDEO_WIDTH = 1280
-    private const val VIDEO_HEIGHT = 720
+    private const val VIDEO_WIDTH = 640
+    private const val VIDEO_HEIGHT = 360
     private const val VIDEO_FPS = 60
-    private const val VIDEO_BITRATE = 8_000_000
+    private const val VIDEO_BITRATE = 3_200_000
     private const val I_FRAME_INTERVAL_SECONDS = 1
-    private const val FRAME_INTERVAL_MS = 17L
+    private const val FRAME_INTERVAL_MS = 16L
 
     private val active = AtomicBoolean(false)
 
@@ -936,7 +936,7 @@ object WudroidLanVideoClient {
         stop(clearStatus = true)
 
         runCatching {
-            socket.receiveBufferSize = 384 * 1024
+            socket.receiveBufferSize = 96 * 1024
         }
 
         receiverRunning.set(true)
@@ -1161,7 +1161,7 @@ object WudroidLanVideoClient {
                     }
                 }
 
-                while (assemblies.size > 3) {
+                while (assemblies.size > 2) {
                     val first =
                         assemblies.keys
                             .firstOrNull()
@@ -1386,7 +1386,7 @@ object WudroidLanVideoClient {
             drainDecoderLocked(codec)
 
             val index =
-                codec.dequeueInputBuffer(2_000L)
+                codec.dequeueInputBuffer(0L)
 
             if (index < 0) return false
 

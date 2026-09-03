@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test13
+
+Teste de ultra baixa latência 360p60 para confirmar/remover o gargalo do pipeline 720p60. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST13.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test12
 
 Teste 720p60 sobre a base low-latency do Test11. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST12.md`.
