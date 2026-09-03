@@ -477,7 +477,7 @@ object WudroidLanMultiplayer {
             }
         }
 
-        WudroidLanVideoClient.stop(clearFrame = true)
+        WudroidLanVideoClient.stop(clearStatus = true)
         clientSocket = null
         joinedHostAddress = null
         joinedHostId = ""

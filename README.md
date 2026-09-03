@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test9 BuildFix1
+
+Corrige chamada antiga clearFrame -> clearStatus no cliente H.264.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test9
 
 Etapa 2: streaming H.264 / MediaCodec.
