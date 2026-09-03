@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test8 BuildFix1
+
+Hook de SurfaceView corrigido sem alterar o callback original do Cemu.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test8
 
 Streaming experimental: Cemu SurfaceView → JPEG/UDP → Player 2.

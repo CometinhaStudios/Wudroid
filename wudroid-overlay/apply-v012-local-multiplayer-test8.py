@@ -16,13 +16,14 @@ if not main_path.exists():
 screen = screen_path.read_text()
 main = main_path.read_text()
 
-marker = "WUDROID_012_LOCAL_MULTIPLAYER_TEST8"
+marker = "WUDROID_012_LOCAL_MULTIPLAYER_TEST8_BUILDFIX1"
 
 if marker not in screen:
     touch_anchor = '''                setOnTouchListener(CanvasOnTouchListener(isTV))
 
                 holder.addCallback(holderCallback)
 '''
+
     touch_new = '''                setOnTouchListener(CanvasOnTouchListener(isTV))
 
                 val wudroidVideoSurface = this
@@ -32,7 +33,7 @@ if marker not in screen:
 
     if touch_anchor not in screen:
         raise SystemExit(
-            "Test8 EmulationSurface touch anchor missing"
+            "Test8 BuildFix1 EmulationSurface touch anchor missing"
         )
 
     screen = screen.replace(
@@ -41,11 +42,29 @@ if marker not in screen:
         1,
     )
 
-    callback_anchor = '''                    override fun surfaceCreated(holder: SurfaceHolder) {}
-                    override fun surfaceDestroyed(holder: SurfaceHolder) {}
+    # Do not rewrite Cemu's existing callback. Several older Wudroid
+    # patches may legitimately change its body. Add an independent
+    # SurfaceHolder.Callback used only by LAN video.
+    callback_anchor = '''                holder.addCallback(holderCallback)
 '''
 
-    callback_new = '''                    override fun surfaceCreated(holder: SurfaceHolder) {
+    callback_new = '''                holder.addCallback(holderCallback)
+
+                holder.addCallback(object : SurfaceHolder.Callback {
+                    override fun surfaceChanged(
+                        holder: SurfaceHolder,
+                        format: Int,
+                        width: Int,
+                        height: Int
+                    ) {
+                        if (isTV && width > 1 && height > 1) {
+                            info.cemu.cemu.WudroidLanVideoHost.attachSurfaceView(
+                                wudroidVideoSurface
+                            )
+                        }
+                    }
+
+                    override fun surfaceCreated(holder: SurfaceHolder) {
                         if (isTV) {
                             info.cemu.cemu.WudroidLanVideoHost.attachSurfaceView(
                                 wudroidVideoSurface
@@ -60,17 +79,24 @@ if marker not in screen:
                             )
                         }
                     }
+                })
 '''
 
-    if callback_anchor not in screen:
+    surface_pos = screen.find("val wudroidVideoSurface = this")
+    callback_pos = screen.find(callback_anchor, surface_pos)
+
+    if callback_pos < 0:
         raise SystemExit(
-            "Test8 EmulationSurface callback anchor missing"
+            "Test8 BuildFix1 holder callback anchor missing"
         )
 
-    screen = screen.replace(
-        callback_anchor,
-        callback_new,
-        1,
+    screen = (
+        screen[:callback_pos]
+        + screen[callback_pos:].replace(
+            callback_anchor,
+            callback_new,
+            1,
+        )
     )
 
     screen += "\n// " + marker + "\n"
@@ -88,15 +114,17 @@ screen_path.write_text(screen)
 main_path.write_text(main)
 
 for required in (
+    "val wudroidVideoSurface = this",
     "WudroidLanVideoHost.attachSurfaceView",
     "WudroidLanVideoHost.detachSurfaceView",
     marker,
 ):
     if required not in screen:
         raise SystemExit(
-            "Test8 verification failed: " + required
+            "Test8 BuildFix1 verification failed: " + required
         )
 
-print("Wudroid 0.1.2 Local Multiplayer Test8 applied")
-print("- TV SurfaceView -> experimental LAN video")
+print("Wudroid 0.1.2 Local Multiplayer Test8 BuildFix1 applied")
+print("- independent SurfaceHolder callback for LAN video")
+print("- original Cemu Surface callback preserved")
 print("- no MediaProjection")
