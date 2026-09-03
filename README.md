@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test12
+
+Teste 720p60 sobre a base low-latency do Test11. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST12.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test9 BuildFix1
 
 Corrige chamada antiga clearFrame -> clearStatus no cliente H.264.

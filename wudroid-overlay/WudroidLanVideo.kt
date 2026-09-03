@@ -36,10 +36,10 @@ object WudroidLanVideoHost {
 
     private const val VIDEO_WIDTH = 1280
     private const val VIDEO_HEIGHT = 720
-    private const val VIDEO_FPS = 30
-    private const val VIDEO_BITRATE = 4_000_000
+    private const val VIDEO_FPS = 60
+    private const val VIDEO_BITRATE = 8_000_000
     private const val I_FRAME_INTERVAL_SECONDS = 1
-    private const val FRAME_INTERVAL_MS = 34L
+    private const val FRAME_INTERVAL_MS = 17L
 
     private val active = AtomicBoolean(false)
 
