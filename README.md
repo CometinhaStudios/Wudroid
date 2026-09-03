@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test8
+
+Streaming experimental: Cemu SurfaceView → JPEG/UDP → Player 2.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test7 BuildFix1
 
 Corrige o ciclo de vida do hotspot e a permissão LAN do Android 16.

@@ -21,6 +21,7 @@ new_region = r'''@Composable
 private fun MultiplayerScreen(onBack: () -> Unit) {
     // WUDROID_012_LOCAL_MULTIPLAYER_TEST4
     // WUDROID_012_LOCAL_MULTIPLAYER_TEST7_BUILDFIX1
+    // WUDROID_012_LOCAL_MULTIPLAYER_TEST8
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var hosts by remember { mutableStateOf(emptyList<WudroidLanHost>()) }
@@ -126,6 +127,16 @@ private fun MultiplayerScreen(onBack: () -> Unit) {
             val controllerLabel = if (joinedControllerKind == "WIIMOTE") "Wii Remote" else "Pro Controller"
             Text("Conectado a ${currentHost.roomName}", color = WGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
             Text("${currentHost.hostName} • Jogador $joinedPlayerNumber • $controllerLabel", color = WMuted, fontSize = 12.sp)
+            Spacer(Modifier.height(6.dp))
+
+            WudroidLanVideoPreview()
+
+            Text(
+                "Streaming LAN experimental • vídeo apenas neste Test8",
+                color = WMuted,
+                fontSize = 11.sp,
+            )
+
             Spacer(Modifier.height(4.dp))
 
             if (joinedControllerKind == "WIIMOTE") {
@@ -137,7 +148,7 @@ private fun MultiplayerScreen(onBack: () -> Unit) {
                 RemoteLanWiimotePad()
             } else {
                 Text(
-                    "Pro Controller remoto ativo. Olhe a tela do Host enquanto o streaming ainda não está disponível.",
+                    "Pro Controller remoto ativo. A imagem do Host aparece acima dos controles.",
                     color = WMuted, fontSize = 12.sp, lineHeight = 17.sp,
                 )
                 Spacer(Modifier.height(6.dp))

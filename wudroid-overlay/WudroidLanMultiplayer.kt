@@ -68,6 +68,8 @@ data class WudroidLanParticipant(
     val nickname: String,
     val playerNumber: Int,
     val controllerKind: String = "PRO",
+    val remoteAddress: String = "",
+    val remotePort: Int = 0,
 )
 
 data class WudroidLanHost(
@@ -234,6 +236,8 @@ object WudroidLanMultiplayer {
                                             nickname = clientName,
                                             playerNumber = 2,
                                             controllerKind = requestedKind,
+                                            remoteAddress = packet.address.hostAddress.orEmpty(),
+                                            remotePort = packet.port,
                                         )
                                         participants[clientId] = participant
                                         mainHandler.post {
@@ -303,6 +307,19 @@ object WudroidLanMultiplayer {
     fun hostRoom(): WudroidRoomConfig? = currentRoom
     fun participantCount(): Int = participants.size
     fun participants(): List<WudroidLanParticipant> = participants.values.sortedBy { it.playerNumber }
+
+    fun videoTarget(): WudroidVideoTarget? {
+        val participant =
+            participants.values.firstOrNull {
+                it.remoteAddress.isNotBlank() &&
+                    it.remotePort in 1..65535
+            } ?: return null
+
+        return WudroidVideoTarget(
+            address = participant.remoteAddress,
+            port = participant.remotePort,
+        )
+    }
 
     fun scanHosts(timeoutMs: Int = 1000): List<WudroidLanHost> {
         val found = LinkedHashMap<String, WudroidLanHost>()
@@ -394,6 +411,7 @@ object WudroidLanMultiplayer {
                     joinedHostAddress = InetAddress.getByName(host.address)
                     joinedHostId = host.hostId
                     joinedClientId = profile.localId
+                    WudroidLanVideoClient.start(socket)
                     socket = null
                     WudroidJoinResult(
                         WudroidJoinStatus.SUCCESS,
@@ -459,6 +477,7 @@ object WudroidLanMultiplayer {
             }
         }
 
+        WudroidLanVideoClient.stop(clearFrame = true)
         clientSocket = null
         joinedHostAddress = null
         joinedHostId = ""
