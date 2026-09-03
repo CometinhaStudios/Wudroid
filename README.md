@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test15
+
+Modo Monitor fullscreen/16:9 sobre a base fluida e low-latency do Test14. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST15.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test14
 
 Corrige a cadência real de captura para 60 Hz sem perder o ultra-low-latency do Test13. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST14.md`.
