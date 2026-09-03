@@ -32,14 +32,14 @@ object WudroidLanVideoHost {
     private const val MAGIC = 0x57564839
     private const val HEADER_SIZE = 28
     private const val MAX_PACKET_PAYLOAD = 1150
-    private const val MAX_ACCESS_UNIT_BYTES = 1_500_000
+    private const val MAX_ACCESS_UNIT_BYTES = 2_500_000
 
-    private const val VIDEO_WIDTH = 640
-    private const val VIDEO_HEIGHT = 360
-    private const val VIDEO_FPS = 24
-    private const val VIDEO_BITRATE = 1_800_000
+    private const val VIDEO_WIDTH = 1280
+    private const val VIDEO_HEIGHT = 720
+    private const val VIDEO_FPS = 30
+    private const val VIDEO_BITRATE = 4_000_000
     private const val I_FRAME_INTERVAL_SECONDS = 1
-    private const val FRAME_INTERVAL_MS = 42L
+    private const val FRAME_INTERVAL_MS = 34L
 
     private val active = AtomicBoolean(false)
 
@@ -67,7 +67,7 @@ object WudroidLanVideoHost {
     private val senderSocket by lazy {
         DatagramSocket().apply {
             broadcast = false
-            sendBufferSize = 1024 * 1024
+            sendBufferSize = 2 * 1024 * 1024
         }
     }
 
@@ -864,7 +864,7 @@ object WudroidLanVideoClient {
     private const val MIME = "video/avc"
     private const val MAGIC = 0x57564839
     private const val HEADER_SIZE = 28
-    private const val MAX_ACCESS_UNIT_BYTES = 1_500_000
+    private const val MAX_ACCESS_UNIT_BYTES = 2_500_000
     private const val MAX_CHUNKS = 1024
 
     private data class Assembly(
@@ -892,8 +892,8 @@ object WudroidLanVideoClient {
     private var decoderConfigQueued = false
 
     private var cachedConfig: ByteArray? = null
-    private var cachedWidth = 640
-    private var cachedHeight = 360
+    private var cachedWidth = 1280
+    private var cachedHeight = 720
 
     private val decoderBufferInfo =
         MediaCodec.BufferInfo()
