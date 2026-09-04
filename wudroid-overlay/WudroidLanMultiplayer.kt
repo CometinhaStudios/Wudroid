@@ -100,6 +100,7 @@ object WudroidLanMultiplayer {
     private const val REJECT_V2 = "WUDROID_REJECT_V2"
     private const val INPUT_BUTTON_V3 = "WUDROID_INPUT_BUTTON_V3"
     private const val INPUT_STICKS_V3 = "WUDROID_INPUT_STICKS_V3"
+    private const val CONTROLLER_KIND_V4 = "WUDROID_CONTROLLER_KIND_V4"
     private const val LEAVE_V3 = "WUDROID_LEAVE_V3"
 
     private val running = AtomicBoolean(false)
@@ -202,6 +203,30 @@ object WudroidLanMultiplayer {
                                             rx.coerceIn(-1f, 1f),
                                             ry.coerceIn(-1f, 1f),
                                         )
+                                    }
+                                }
+                            }
+
+                            text.startsWith("$CONTROLLER_KIND_V4|") -> {
+                                val parts = text.split("|", limit = 3)
+                                if (parts.size >= 3) {
+                                    val clientId = clean(parts[1])
+                                    val kind = if (parts[2] == "WIIMOTE") "WIIMOTE" else "PRO"
+                                    val participant = participants[clientId]
+                                    if (participant != null) {
+                                        participants[clientId] = participant.copy(controllerKind = kind)
+                                        releaseRemoteController()
+                                        mainHandler.post {
+                                            runCatching {
+                                                NativeInput.setControllerType(
+                                                    1,
+                                                    if (kind == "WIIMOTE")
+                                                        NativeInput.EmulatedControllerType.WIIMOTE
+                                                    else
+                                                        NativeInput.EmulatedControllerType.PRO
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -460,6 +485,18 @@ object WudroidLanMultiplayer {
             ly.coerceIn(-1f, 1f).toString(),
             rx.coerceIn(-1f, 1f).toString(),
             ry.coerceIn(-1f, 1f).toString(),
+        ).joinToString("|")
+        sendClientInput(packet)
+    }
+
+    fun sendRemoteControllerKind(controllerKind: String) {
+        val clientId = joinedClientId
+        if (clientId.isBlank()) return
+        val kind = if (controllerKind == "WIIMOTE") "WIIMOTE" else "PRO"
+        val packet = listOf(
+            CONTROLLER_KIND_V4,
+            clean(clientId),
+            kind,
         ).joinToString("|")
         sendClientInput(packet)
     }

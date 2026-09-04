@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test18
+
+Player 2 ganha controles sobre o vídeo, Wii Remote estilo Dolphin, menu central no BACK, troca Wii Remote/GamePad ao vivo, editor correto por tipo e saída real da sessão. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST18.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test17
 
 O Host agora recorta o viewport 16:9 do jogo antes do PixelCopy/encode, em vez de transmitir a Surface inteira. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST17.md`.
