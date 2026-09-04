@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test17
+
+O Host agora recorta o viewport 16:9 do jogo antes do PixelCopy/encode, em vez de transmitir a Surface inteira. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST17.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test16 BuildFix1
 
 Corrige o import de `DisposableEffect` no EmulationScreen após a remoção do Turbo. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST16-BUILDFIX1.md`.

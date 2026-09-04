@@ -1,6 +1,7 @@
 package info.cemu.cemu
 
 import android.graphics.Bitmap
+import android.graphics.Rect
 import android.media.Image
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
@@ -21,6 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.roundToInt
 
 data class WudroidVideoTarget(
     val address: String,
@@ -98,6 +100,35 @@ object WudroidLanVideoHost {
         }
     }
 
+    // WUDROID_012_LOCAL_MULTIPLAYER_TEST17_SOURCE_CROP
+    // Crop the HOST source before PixelCopy/encoding. The emulation SurfaceView can
+    // follow the phone/display aspect ratio, while Wii U TV output is 16:9.
+    // Copying the whole Surface therefore also copies pillar/letterbox regions.
+    private fun gameSourceRect(surfaceView: SurfaceView): Rect {
+        val sourceWidth = surfaceView.width.coerceAtLeast(2)
+        val sourceHeight = surfaceView.height.coerceAtLeast(2)
+        val targetAspect = VIDEO_WIDTH.toFloat() / VIDEO_HEIGHT.toFloat()
+        val sourceAspect = sourceWidth.toFloat() / sourceHeight.toFloat()
+
+        return if (sourceAspect > targetAspect) {
+            // Source is wider than 16:9: remove equal left/right regions.
+            val cropWidth =
+                (sourceHeight * targetAspect)
+                    .roundToInt()
+                    .coerceIn(2, sourceWidth)
+            val left = ((sourceWidth - cropWidth) / 2).coerceAtLeast(0)
+            Rect(left, 0, left + cropWidth, sourceHeight)
+        } else {
+            // Source is taller/narrower than 16:9: remove equal top/bottom regions.
+            val cropHeight =
+                (sourceWidth / targetAspect)
+                    .roundToInt()
+                    .coerceIn(2, sourceHeight)
+            val top = ((sourceHeight - cropHeight) / 2).coerceAtLeast(0)
+            Rect(0, top, sourceWidth, top + cropHeight)
+        }
+    }
+
     private fun captureBitmap(): Bitmap {
         val old = captureBitmap
 
@@ -155,8 +186,11 @@ object WudroidLanVideoHost {
         val bitmap = captureBitmap()
 
         try {
+            val gameRect = gameSourceRect(surfaceView)
+
             PixelCopy.request(
                 surfaceView,
+                gameRect,
                 bitmap,
                 { result ->
                     if (
