@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test18 BuildFix1
+
+Corrige a compilação Kotlin removendo o import interno de `weight` do `WudroidLanVideoUi.kt`. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST18-BUILDFIX1.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test18
 
 Player 2 ganha controles sobre o vídeo, Wii Remote estilo Dolphin, menu central no BACK, troca Wii Remote/GamePad ao vivo, editor correto por tipo e saída real da sessão. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST18.md`.
