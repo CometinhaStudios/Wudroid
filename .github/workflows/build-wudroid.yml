@@ -169,6 +169,7 @@ jobs:
           python3 wudroid-overlay/apply-v012-local-multiplayer-test17.py
           python3 wudroid-overlay/apply-v012-local-multiplayer-test18.py
           python3 wudroid-overlay/apply-v012-local-multiplayer-test19.py
+          python3 wudroid-overlay/apply-v011w-layout-test14-rebuild1.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -179,9 +180,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 48', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 49', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.2-local-multiplayer-test19"', s)
+                     'versionName = "0.1.1-layout-test14-rebuild1"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
