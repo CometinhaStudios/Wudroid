@@ -46,7 +46,7 @@ private val WudroidLanMuted = Color(0xFF9DA8B4)
 private val WudroidLanGreen = Color(0xFF36D17C)
 
 @Composable
-// WUDROID_012H_HOST_MENU_TEST1
+// WUDROID_012H_HOST_MENU_TEST2
 fun WudroidLanHostDialog(
     context: Context,
     onClose: () -> Unit,
@@ -170,31 +170,26 @@ fun WudroidLanHostDialog(
             Text(
                 when {
                     hosting -> "Multiplayer"
-                    hostMode == null -> "Escolher multiplayer"
+                    hostMode == null -> "Escolha seu Multiplayer"
                     hostMode == "LAN" -> "LAN"
                     else -> "Local Host"
                 },
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                fontSize = if (!hosting && hostMode == null) 30.sp else 20.sp
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!hosting) {
                     if (hostMode == null) {
-                        Text(
-                            "Escolha como a partida local vai funcionar.",
-                            color = WudroidLanMuted,
-                            fontSize = 13.sp
-                        )
-
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(18.dp),
                         ) {
                             Button(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(142.dp),
+                                    .height(132.dp),
                                 onClick = {
                                     useHostWifi = false
                                     hostMode = "LAN"
@@ -203,31 +198,20 @@ fun WudroidLanHostDialog(
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = WudroidLanCard
                                 ),
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(20.dp),
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.Start,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Text(
-                                        "LAN",
-                                        color = WudroidLanBlue,
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        "Voltado a jogos na rede Wi‑Fi. Host e Player 2 ficam conectados ao mesmo Wi‑Fi.",
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        lineHeight = 16.sp,
-                                    )
-                                }
+                                Text(
+                                    "LAN",
+                                    color = WudroidLanBlue,
+                                    fontSize = 30.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
                             }
 
                             Button(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(142.dp),
+                                    .height(132.dp),
                                 onClick = {
                                     useHostWifi = true
                                     hostMode = "LOCAL_HOST"
@@ -236,28 +220,17 @@ fun WudroidLanHostDialog(
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = WudroidLanCard
                                 ),
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(20.dp),
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.Start,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Text(
-                                        "Local Host",
-                                        color = WudroidLanGreen,
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        "Voltado a jogos locais. Quem cria a sala vira o roteador para o Player 2 conectar e jogar sem precisar de roteador Wi‑Fi ou internet.",
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        lineHeight = 16.sp,
-                                    )
-                                }
+                                Text(
+                                    "Local Host",
+                                    color = WudroidLanGreen,
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
                             }
                         }
-                    } else {
+} else {
                     Text(
                         "Host: ${profile.nickname}",
                         color = WudroidLanMuted,

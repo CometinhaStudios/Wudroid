@@ -183,9 +183,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 53', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 54', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.2H-host-menu-test1"', s)
+                     'versionName = "0.1.2H-host-menu-test2"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -244,21 +244,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.2H-HostMenu-Test1-aligned.apk
+            "$APK" out/Wudroid-0.1.2H-HostMenu-Test2-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.2H-HostMenu-Test1.apk \
-            out/Wudroid-0.1.2H-HostMenu-Test1-aligned.apk
+            --out out/Wudroid-0.1.2H-HostMenu-Test2.apk \
+            out/Wudroid-0.1.2H-HostMenu-Test2-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.2H-HostMenu-Test1.apk
+            out/Wudroid-0.1.2H-HostMenu-Test2.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.2H-HostMenu-Test1-APK
-          path: out/Wudroid-0.1.2H-HostMenu-Test1.apk
+          name: Wudroid-0.1.2H-HostMenu-Test2-APK
+          path: out/Wudroid-0.1.2H-HostMenu-Test2.apk
           if-no-files-found: error
           compression-level: 0

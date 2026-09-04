@@ -41,8 +41,8 @@ import info.cemu.cemu.nativeinterface.NativeInput
 import kotlin.math.roundToInt
 
 private val LanPadCyan = Color(0xFF00B8F5)
-private val LanPadLight = Color(0xBFE7EDF2)
-private val LanPadDark = Color(0xA91B2026)
+private val LanPadLight = Color(0xF2D8D8D8)
+private val LanPadDark = Color(0xE01B2026)
 private val LanPadInk = Color(0xFF1A1D21)
 private val LanPadWhite = Color(0xFFF7FAFC)
 private const val LAN_OVERLAY_PREFS = "wudroid_lan_player2_overlay"
@@ -71,50 +71,51 @@ private fun BoxScope.WiiRemoteDolphinLayout(
     prefs: SharedPreferences,
     editing: Boolean,
 ) {
-    LanEditableSlot(prefs, "wii_nunchuk", Alignment.BottomStart, editing) {
-        WiiNunchukStick(editing)
-    }
-
-    LanEditableSlot(prefs, "wii_face", Alignment.CenterEnd, editing) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            LanRemoteButton("Z", WudroidWiimoteMapping.NUNCHUK_Z, editing, Modifier.size(58.dp), true, true)
-            LanRemoteButton("B", WudroidWiimoteMapping.B, editing, Modifier.size(width = 64.dp, height = 46.dp), false, true)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                LanRemoteButton("C", WudroidWiimoteMapping.NUNCHUK_C, editing, Modifier.size(58.dp), true, true)
-                LanRemoteButton("A", WudroidWiimoteMapping.A, editing, Modifier.size(66.dp), true, true)
+    // WUDROID_012H_HOST_MENU_TEST2
+    // Same Wii Remote layout used by the local emulator overlay:
+    // D-pad left, +/- bottom-center and B/1/A/2 diamond right.
+    // The Nunchuk, C, Z and HOME controls are intentionally not shown here.
+    LanEditableSlot(prefs, "wii_dpad_group", Alignment.BottomStart, editing) {
+        Box(Modifier.size(170.dp)) {
+            Box(Modifier.align(Alignment.TopCenter)) {
+                LanRemoteButton("▲", NativeInput.WiimoteButton.RIGHT, editing, Modifier.size(56.dp), false, true)
+            }
+            Box(Modifier.align(Alignment.CenterStart)) {
+                LanRemoteButton("◀", NativeInput.WiimoteButton.UP, editing, Modifier.size(56.dp), false, true)
+            }
+            Box(Modifier.align(Alignment.CenterEnd)) {
+                LanRemoteButton("▶", NativeInput.WiimoteButton.DOWN, editing, Modifier.size(56.dp), false, true)
+            }
+            Box(Modifier.align(Alignment.BottomCenter)) {
+                LanRemoteButton("▼", NativeInput.WiimoteButton.LEFT, editing, Modifier.size(56.dp), false, true)
             }
         }
     }
 
-    LanEditableSlot(prefs, "wii_dpad", Alignment.Center, editing) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            LanRemoteButton("↑", NativeInput.WiimoteButton.UP, editing, Modifier.size(42.dp), false, true)
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                LanRemoteButton("←", NativeInput.WiimoteButton.LEFT, editing, Modifier.size(42.dp), false, true)
-                Spacer(Modifier.size(42.dp))
-                LanRemoteButton("→", NativeInput.WiimoteButton.RIGHT, editing, Modifier.size(42.dp), false, true)
+    LanEditableSlot(prefs, "wii_face_group", Alignment.BottomEnd, editing) {
+        Box(Modifier.size(184.dp)) {
+            Box(Modifier.align(Alignment.TopCenter)) {
+                LanRemoteButton("B", NativeInput.WiimoteButton.B, editing, Modifier.size(60.dp), true, true)
             }
-            LanRemoteButton("↓", NativeInput.WiimoteButton.DOWN, editing, Modifier.size(42.dp), false, true)
+            Box(Modifier.align(Alignment.CenterStart)) {
+                LanRemoteButton("1", NativeInput.WiimoteButton.ONE, editing, Modifier.size(60.dp), true, true)
+            }
+            Box(Modifier.align(Alignment.CenterEnd)) {
+                LanRemoteButton("A", NativeInput.WiimoteButton.A, editing, Modifier.size(60.dp), true, true)
+            }
+            Box(Modifier.align(Alignment.BottomCenter)) {
+                LanRemoteButton("2", NativeInput.WiimoteButton.TWO, editing, Modifier.size(60.dp), true, true)
+            }
         }
     }
 
     LanEditableSlot(prefs, "wii_system", Alignment.BottomCenter, editing) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LanRemoteButton("−", WudroidWiimoteMapping.MINUS, editing, Modifier.size(42.dp), true, true)
-                LanRemoteButton("+", WudroidWiimoteMapping.PLUS, editing, Modifier.size(42.dp), true, true)
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LanRemoteButton("1", WudroidWiimoteMapping.ONE, editing, Modifier.size(48.dp), true, true)
-                LanRemoteButton("2", WudroidWiimoteMapping.TWO, editing, Modifier.size(48.dp), true, true)
-            }
-            LanRemoteButton("HOME", WudroidWiimoteMapping.HOME, editing, Modifier.size(width = 68.dp, height = 38.dp), false, true)
+            LanRemoteButton("+", NativeInput.WiimoteButton.PLUS, editing, Modifier.size(44.dp), true, true)
+            LanRemoteButton("−", NativeInput.WiimoteButton.MINUS, editing, Modifier.size(44.dp), true, true)
         }
     }
 }
