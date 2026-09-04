@@ -46,6 +46,7 @@ private val WudroidLanMuted = Color(0xFF9DA8B4)
 private val WudroidLanGreen = Color(0xFF36D17C)
 
 @Composable
+// WUDROID_012H_HOST_MENU_TEST1
 fun WudroidLanHostDialog(
     context: Context,
     onClose: () -> Unit,
@@ -59,6 +60,16 @@ fun WudroidLanHostDialog(
 
     var useHostWifi by remember {
         mutableStateOf(WudroidLocalHotspot.state().active)
+    }
+
+    var hostMode by remember {
+        mutableStateOf<String?>(
+            if (initialRoom != null) {
+                if (WudroidLocalHotspot.state().active) "LOCAL_HOST" else "LAN"
+            } else {
+                null
+            }
+        )
     }
 
     var hosting by remember { mutableStateOf(WudroidLanMultiplayer.isHosting()) }
@@ -157,13 +168,96 @@ fun WudroidLanHostDialog(
         },
         title = {
             Text(
-                if (hosting) "Multiplayer" else "Criar multiplayer",
+                when {
+                    hosting -> "Multiplayer"
+                    hostMode == null -> "Escolher multiplayer"
+                    hostMode == "LAN" -> "LAN"
+                    else -> "Local Host"
+                },
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!hosting) {
+                    if (hostMode == null) {
+                        Text(
+                            "Escolha como a partida local vai funcionar.",
+                            color = WudroidLanMuted,
+                            fontSize = 13.sp
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Button(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(142.dp),
+                                onClick = {
+                                    useHostWifi = false
+                                    hostMode = "LAN"
+                                    error = null
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = WudroidLanCard
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.Start,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Text(
+                                        "LAN",
+                                        color = WudroidLanBlue,
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "Voltado a jogos na rede Wi‑Fi. Host e Player 2 ficam conectados ao mesmo Wi‑Fi.",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        lineHeight = 16.sp,
+                                    )
+                                }
+                            }
+
+                            Button(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(142.dp),
+                                onClick = {
+                                    useHostWifi = true
+                                    hostMode = "LOCAL_HOST"
+                                    error = null
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = WudroidLanCard
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.Start,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Text(
+                                        "Local Host",
+                                        color = WudroidLanGreen,
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "Voltado a jogos locais. Quem cria a sala vira o roteador para o Player 2 conectar e jogar sem precisar de roteador Wi‑Fi ou internet.",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        lineHeight = 16.sp,
+                                    )
+                                }
+                            }
+                        }
+                    } else {
                     Text(
                         "Host: ${profile.nickname}",
                         color = WudroidLanMuted,
@@ -252,47 +346,32 @@ fun WudroidLanHostDialog(
                     }
 
                     Text(
-                        "Conexão",
+                        "Modo",
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            modifier = Modifier.weight(1f),
-                            enabled = !startingHostWifi,
-                            onClick = {
-                                useHostWifi = false
-                                error = null
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor =
-                                    if (!useHostWifi) WudroidLanBlue else WudroidLanCard
-                            ),
-                        ) {
-                            Text(
-                                "Mesmo Wi-Fi",
-                                color = if (!useHostWifi) Color.Black else Color.White
-                            )
-                        }
-
-                        Button(
-                            modifier = Modifier.weight(1f),
-                            enabled = !startingHostWifi,
-                            onClick = {
-                                useHostWifi = true
-                                error = null
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor =
-                                    if (useHostWifi) WudroidLanBlue else WudroidLanCard
-                            ),
-                        ) {
-                            Text(
-                                "Wi-Fi do Host",
-                                color = if (useHostWifi) Color.Black else Color.White
-                            )
-                        }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(WudroidLanCard, RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            if (useHostWifi) "Local Host" else "LAN",
+                            color = if (useHostWifi) WudroidLanGreen else WudroidLanBlue,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                        )
+                        Text(
+                            if (useHostWifi)
+                                "O Wudroid cria a rede local para o Player 2 conectar."
+                            else
+                                "Usa a rede Wi‑Fi em que os dois aparelhos já estão conectados.",
+                            color = WudroidLanMuted,
+                            fontSize = 11.sp,
+                        )
                     }
 
                     if (useHostWifi) {
@@ -368,6 +447,7 @@ fun WudroidLanHostDialog(
                             color = Color(0xFFFF5A63),
                             fontSize = 12.sp
                         )
+                    }
                     }
                 } else {
                     val room: WudroidRoomConfig? =
@@ -495,6 +575,7 @@ fun WudroidLanHostDialog(
         },
         confirmButton = {
             if (!hosting) {
+                if (hostMode != null) {
                 Button(
                     enabled = !startingHostWifi,
                     onClick = {
@@ -576,6 +657,7 @@ fun WudroidLanHostDialog(
                         fontWeight = FontWeight.Bold
                     )
                 }
+                }
             } else {
                 Button(
                     enabled = participants.isNotEmpty(),
@@ -595,26 +677,36 @@ fun WudroidLanHostDialog(
         dismissButton = {
             Button(
                 onClick = {
-                    if (hosting) {
-                        // Explicit end of Host session = stop room + hotspot.
-                        WudroidLanMultiplayer.stopHost()
-                    } else if (startingHostWifi) {
-                        // Cancels a pending AP request via generation token.
-                        WudroidLocalHotspot.stop()
-                        startingHostWifi = false
+                    when {
+                        hosting -> {
+                            // Explicit end of Host session = stop room + hotspot.
+                            WudroidLanMultiplayer.stopHost()
+                            onClose()
+                        }
+                        startingHostWifi -> {
+                            // Cancels a pending AP request via generation token.
+                            WudroidLocalHotspot.stop()
+                            startingHostWifi = false
+                            onClose()
+                        }
+                        hostMode != null -> {
+                            hostMode = null
+                            useHostWifi = false
+                            error = null
+                        }
+                        else -> onClose()
                     }
-
-                    onClose()
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = WudroidLanCard
                 ),
             ) {
                 Text(
-                    if (hosting)
-                        "Cancelar host"
-                    else
-                        "Cancelar"
+                    when {
+                        hosting -> "Cancelar host"
+                        hostMode != null && !startingHostWifi -> "Voltar"
+                        else -> "Cancelar"
+                    }
                 )
             }
         },
