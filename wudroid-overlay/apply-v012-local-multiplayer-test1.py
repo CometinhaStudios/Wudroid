@@ -726,6 +726,7 @@ main = re.sub(
 )
 
 # Emulation host UI + save UI disabled.
+screen = ensure_import(screen, 'import androidx.compose.runtime.DisposableEffect')
 screen = ensure_import(screen, 'import info.cemu.cemu.WudroidLanMultiplayer')
 context_anchor = '    val wudroidQuickStateContext = LocalContext.current // WUDROID_QUICKSTATE_ENGINE_TEST10\n'
 if context_anchor not in screen:

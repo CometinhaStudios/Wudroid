@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test16 BuildFix1
+
+Corrige o import de `DisposableEffect` no EmulationScreen após a remoção do Turbo. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST16-BUILDFIX1.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test16
 
 16:9 forçado no Player 2, Turbo removido e rolagem na configuração inicial. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST16.md`.
