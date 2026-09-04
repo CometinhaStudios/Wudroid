@@ -8,6 +8,23 @@ if not path.exists():
 s = path.read_text()
 marker = "WUDROID_TURBO_TEST13_BUILDFIX6_SETUP"
 
+# TEST16: the first-run screen must scroll on short/small displays.
+def ensure_import(source: str, imp: str) -> str:
+    if imp in source:
+        return source
+    lines = source.splitlines(keepends=True)
+    import_indexes = [i for i, line in enumerate(lines) if line.startswith("import ")]
+    if not import_indexes:
+        raise SystemExit("Setup import block missing")
+    lines.insert(import_indexes[-1] + 1, imp + "\n")
+    return "".join(lines)
+
+for imp in (
+    "import androidx.compose.foundation.rememberScrollState",
+    "import androidx.compose.foundation.verticalScroll",
+):
+    s = ensure_import(s, imp)
+
 if marker in s:
     print("Wudroid Turbo Test13 BuildFix6 setup already applied")
     raise SystemExit(0)
@@ -80,9 +97,12 @@ private fun SetupWizard(
                 .fillMaxSize()
                 .padding(pad)
                 .padding(horizontal = 26.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     WudroidMark(64.dp)
                     Spacer(Modifier.width(16.dp))
@@ -146,6 +166,7 @@ private fun SetupWizard(
                 )
             }
 
+            Spacer(Modifier.height(14.dp))
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onFinish,
@@ -168,6 +189,7 @@ for needle in (
     'title = "Selecionar keys.txt"',
     'title = "Selecionar pasta de jogos"',
     '"Pasta configurada ✓"',
+    'verticalScroll(rememberScrollState())',
 ):
     if needle not in s:
         raise SystemExit(f"BuildFix6 setup verification failed: {needle}")

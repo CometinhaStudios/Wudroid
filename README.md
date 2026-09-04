@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test16
+
+16:9 forçado no Player 2, Turbo removido e rolagem na configuração inicial. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST16.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test15
 
 Modo Monitor fullscreen/16:9 sobre a base fluida e low-latency do Test14. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST15.md`.

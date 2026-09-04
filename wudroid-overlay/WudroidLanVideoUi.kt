@@ -58,6 +58,9 @@ private fun WudroidLanVideoSurface(
         factory = { context ->
             SurfaceView(context).apply {
                 keepScreenOn = true
+                // TEST16: force the decoder target buffer to the transmitted 16:9 size.
+                // This prevents some devices from keeping a stale/square Surface buffer.
+                holder.setFixedSize(640, 360)
                 holder.addCallback(
                     object : SurfaceHolder.Callback {
                         override fun surfaceCreated(holder: SurfaceHolder) {

@@ -1360,6 +1360,15 @@ object WudroidLanVideoClient {
 
             codec.start()
 
+            // TEST16: the stream is square-pixel 16:9. Force the decoder output
+            // to fill the 16:9 Surface. With matching 16:9 input this does not crop;
+            // it only avoids OEM SurfaceView aspect quirks.
+            runCatching {
+                codec.setVideoScalingMode(
+                    MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
+                )
+            }
+
             decoder = codec
             decoderWidth = width
             decoderHeight = height
