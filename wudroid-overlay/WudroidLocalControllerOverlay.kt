@@ -19,18 +19,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -42,15 +52,24 @@ import info.cemu.cemu.nativeinterface.NativeInput
 import kotlin.math.roundToInt
 
 // WUDROID_LAYOUT14_RUNTIMEFIX1
+// WUDROID_LAYOUT14_RUNTIMEFIX2
 // This is the real VPAD/WIIMOTE overlay used by Local Multiplayer Test19.
 // Layout14 must live here; InputOverlaySurfaceView is bypassed for these types.
 
 private val LocalPadCyan = Color(0xFF00B8F5)
-private val LocalPadLight = Color(0xBFD8D8D8)
-private val LocalPadDark = Color(0xA91B2026)
+private val LocalPadLight = Color(0xF2D8D8D8)
+private val LocalPadDark = Color(0xE01B2026)
 private val LocalPadInk = Color(0xFF1A1D21)
 private val LocalPadWhite = Color(0xFFF7FAFC)
 private const val LOCAL_OVERLAY_PREFS = "wudroid_local_controller_overlay_v3_layout14"
+
+private class LocalSlideTouchRouter(
+    val pressed: Map<Int, Boolean>,
+    val registerBounds: (Int, Rect) -> Unit,
+    val unregisterBounds: (Int) -> Unit,
+)
+
+private val LocalSlideTouchRouterState = compositionLocalOf<LocalSlideTouchRouter?> { null }
 
 @Composable
 fun WudroidLocalControllerOverlay(
@@ -101,34 +120,123 @@ fun WudroidLocalControllerOverlay(
         }
     }
 
+    val buttonBounds = remember(controllerType, controllerIndex) { mutableMapOf<Int, Rect>() }
+    val pressedButtons = remember(controllerType, controllerIndex) { mutableStateMapOf<Int, Boolean>() }
+    var rootWindowOffset by remember(controllerType, controllerIndex) { mutableStateOf(Offset.Zero) }
+
+    val touchRouter = remember(controllerType, controllerIndex) {
+        LocalSlideTouchRouter(
+            pressed = pressedButtons,
+            registerBounds = { mappingId, bounds -> buttonBounds[mappingId] = bounds },
+            unregisterBounds = { mappingId -> buttonBounds.remove(mappingId) },
+        )
+    }
+
+    val slideTouchModifier = if (!editing) {
+        Modifier.pointerInput(controllerType, controllerIndex, layoutEpoch) {
+            awaitPointerEventScope {
+                val routedPointers = mutableSetOf<PointerId>()
+                val ignoredPointers = mutableSetOf<PointerId>()
+                val activeByPointer = mutableMapOf<PointerId, Int>()
+
+                fun releasePointer(pointerId: PointerId) {
+                    val old = activeByPointer.remove(pointerId) ?: return
+                    if (old !in activeByPointer.values) {
+                        pressedButtons.remove(old)
+                        NativeInput.onOverlayButton(controllerIndex, old, false)
+                    }
+                }
+
+                fun movePointer(pointerId: PointerId, windowPosition: Offset) {
+                    val hit = buttonBounds.entries.lastOrNull { (_, rect) -> rect.contains(windowPosition) }?.key
+                    val old = activeByPointer[pointerId]
+                    if (old == hit) return
+
+                    if (old != null) {
+                        activeByPointer.remove(pointerId)
+                        if (old !in activeByPointer.values) {
+                            pressedButtons.remove(old)
+                            NativeInput.onOverlayButton(controllerIndex, old, false)
+                        }
+                    }
+
+                    if (hit != null) {
+                        val alreadyPressed = hit in activeByPointer.values
+                        activeByPointer[pointerId] = hit
+                        pressedButtons[hit] = true
+                        if (!alreadyPressed) {
+                            NativeInput.onOverlayButton(controllerIndex, hit, true)
+                        }
+                    }
+                }
+
+                try {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        for (change in event.changes) {
+                            val pointerId = change.id
+                            if (change.pressed) {
+                                val windowPosition = change.position + rootWindowOffset
+                                if (pointerId !in routedPointers && pointerId !in ignoredPointers) {
+                                    val startsOnButton = buttonBounds.values.any { it.contains(windowPosition) }
+                                    if (startsOnButton) {
+                                        routedPointers += pointerId
+                                        movePointer(pointerId, windowPosition)
+                                    } else {
+                                        ignoredPointers += pointerId
+                                    }
+                                } else if (pointerId in routedPointers) {
+                                    movePointer(pointerId, windowPosition)
+                                }
+                            } else {
+                                releasePointer(pointerId)
+                                routedPointers.remove(pointerId)
+                                ignoredPointers.remove(pointerId)
+                            }
+                        }
+                    }
+                } finally {
+                    activeByPointer.keys.toList().forEach(::releasePointer)
+                    pressedButtons.clear()
+                }
+            }
+        }
+    } else {
+        Modifier
+    }
+
     Box(
         Modifier
             .fillMaxSize()
+            .onGloballyPositioned { rootWindowOffset = it.positionInWindow() }
+            .then(slideTouchModifier)
             .graphicsLayer(alpha = overlayAlpha.coerceIn(0f, 1f)),
     ) {
-        if (controllerType == NativeInput.EmulatedControllerType.WIIMOTE) {
-            LocalWiiRemoteLayout(
-                prefs = prefs,
-                controllerIndex = controllerIndex,
-                editing = editing,
-                separated = separated,
-                selectedKey = selectedKey,
-                selectedBaseScale = selectedBaseScale,
-                editorSizePercent = editorSizePercent,
-                resetToken = layoutEpoch,
-                onSelect = ::select,
-            )
-        } else {
-            LocalGamePadLayout(
-                prefs = prefs,
-                controllerIndex = controllerIndex,
-                editing = editing,
-                selectedKey = selectedKey,
-                selectedBaseScale = selectedBaseScale,
-                editorSizePercent = editorSizePercent,
-                resetToken = layoutEpoch,
-                onSelect = ::select,
-            )
+        CompositionLocalProvider(LocalSlideTouchRouterState provides touchRouter) {
+            if (controllerType == NativeInput.EmulatedControllerType.WIIMOTE) {
+                LocalWiiRemoteLayout(
+                    prefs = prefs,
+                    controllerIndex = controllerIndex,
+                    editing = editing,
+                    separated = separated,
+                    selectedKey = selectedKey,
+                    selectedBaseScale = selectedBaseScale,
+                    editorSizePercent = editorSizePercent,
+                    resetToken = layoutEpoch,
+                    onSelect = ::select,
+                )
+            } else {
+                LocalGamePadLayout(
+                    prefs = prefs,
+                    controllerIndex = controllerIndex,
+                    editing = editing,
+                    selectedKey = selectedKey,
+                    selectedBaseScale = selectedBaseScale,
+                    editorSizePercent = editorSizePercent,
+                    resetToken = layoutEpoch,
+                    onSelect = ::select,
+                )
+            }
         }
     }
 }
@@ -152,27 +260,27 @@ private fun BoxScope.LocalWiiRemoteLayout(
             prefs = prefs,
             key = "wii_dpad_group",
             alignment = Alignment.BottomStart,
-            padding = 30.dp,
-            baseY = (-62).dp,
+            padding = 22.dp,
+            baseY = (-24).dp,
             resetToken = resetToken,
-            modifier = Modifier.size(188.dp),
+            modifier = Modifier.size(170.dp),
         ) {
             LocalEditableItem(
                 prefs, "wii_dpad_up", Alignment.TopCenter, editing,
                 selectedKey, selectedBaseScale, editorSizePercent, resetToken, onSelect,
-            ) { LocalButton("▲", NativeInput.WiimoteButton.UP, controllerIndex, editing, Modifier.size(62.dp), light = true) }
+            ) { LocalButton("▲", NativeInput.WiimoteButton.RIGHT, controllerIndex, editing, Modifier.size(56.dp), light = true) }
             LocalEditableItem(
                 prefs, "wii_dpad_left", Alignment.CenterStart, editing,
                 selectedKey, selectedBaseScale, editorSizePercent, resetToken, onSelect,
-            ) { LocalButton("◀", NativeInput.WiimoteButton.LEFT, controllerIndex, editing, Modifier.size(62.dp), light = true) }
+            ) { LocalButton("◀", NativeInput.WiimoteButton.UP, controllerIndex, editing, Modifier.size(56.dp), light = true) }
             LocalEditableItem(
                 prefs, "wii_dpad_right", Alignment.CenterEnd, editing,
                 selectedKey, selectedBaseScale, editorSizePercent, resetToken, onSelect,
-            ) { LocalButton("▶", NativeInput.WiimoteButton.RIGHT, controllerIndex, editing, Modifier.size(62.dp), light = true) }
+            ) { LocalButton("▶", NativeInput.WiimoteButton.DOWN, controllerIndex, editing, Modifier.size(56.dp), light = true) }
             LocalEditableItem(
                 prefs, "wii_dpad_down", Alignment.BottomCenter, editing,
                 selectedKey, selectedBaseScale, editorSizePercent, resetToken, onSelect,
-            ) { LocalButton("▼", NativeInput.WiimoteButton.DOWN, controllerIndex, editing, Modifier.size(62.dp), light = true) }
+            ) { LocalButton("▼", NativeInput.WiimoteButton.LEFT, controllerIndex, editing, Modifier.size(56.dp), light = true) }
         }
     } else {
         LocalEditableItem(
@@ -185,8 +293,8 @@ private fun BoxScope.LocalWiiRemoteLayout(
             editorSizePercent = editorSizePercent,
             resetToken = resetToken,
             onSelect = onSelect,
-            padding = 30.dp,
-            baseY = (-62).dp,
+            padding = 22.dp,
+            baseY = (-24).dp,
         ) {
             WiiDpadCluster(controllerIndex, editing)
         }
@@ -197,27 +305,27 @@ private fun BoxScope.LocalWiiRemoteLayout(
             prefs = prefs,
             key = "wii_face_group",
             alignment = Alignment.BottomEnd,
-            padding = 30.dp,
-            baseY = (-44).dp,
+            padding = 22.dp,
+            baseY = (-18).dp,
             resetToken = resetToken,
-            modifier = Modifier.size(206.dp),
+            modifier = Modifier.size(184.dp),
         ) {
             LocalEditableItem(
                 prefs, "wii_face_b", Alignment.TopCenter, editing,
                 selectedKey, selectedBaseScale, editorSizePercent, resetToken, onSelect,
-            ) { LocalButton("B", NativeInput.WiimoteButton.B, controllerIndex, editing, Modifier.size(66.dp), circular = true, light = true) }
+            ) { LocalButton("B", NativeInput.WiimoteButton.B, controllerIndex, editing, Modifier.size(60.dp), circular = true, light = true) }
             LocalEditableItem(
                 prefs, "wii_face_1", Alignment.CenterStart, editing,
                 selectedKey, selectedBaseScale, editorSizePercent, resetToken, onSelect,
-            ) { LocalButton("1", NativeInput.WiimoteButton.ONE, controllerIndex, editing, Modifier.size(66.dp), circular = true, light = true) }
+            ) { LocalButton("1", NativeInput.WiimoteButton.ONE, controllerIndex, editing, Modifier.size(60.dp), circular = true, light = true) }
             LocalEditableItem(
                 prefs, "wii_face_a", Alignment.CenterEnd, editing,
                 selectedKey, selectedBaseScale, editorSizePercent, resetToken, onSelect,
-            ) { LocalButton("A", NativeInput.WiimoteButton.A, controllerIndex, editing, Modifier.size(66.dp), circular = true, light = true) }
+            ) { LocalButton("A", NativeInput.WiimoteButton.A, controllerIndex, editing, Modifier.size(60.dp), circular = true, light = true) }
             LocalEditableItem(
                 prefs, "wii_face_2", Alignment.BottomCenter, editing,
                 selectedKey, selectedBaseScale, editorSizePercent, resetToken, onSelect,
-            ) { LocalButton("2", NativeInput.WiimoteButton.TWO, controllerIndex, editing, Modifier.size(66.dp), circular = true, light = true) }
+            ) { LocalButton("2", NativeInput.WiimoteButton.TWO, controllerIndex, editing, Modifier.size(60.dp), circular = true, light = true) }
         }
     } else {
         LocalEditableItem(
@@ -230,8 +338,8 @@ private fun BoxScope.LocalWiiRemoteLayout(
             editorSizePercent = editorSizePercent,
             resetToken = resetToken,
             onSelect = onSelect,
-            padding = 30.dp,
-            baseY = (-44).dp,
+            padding = 22.dp,
+            baseY = (-18).dp,
         ) {
             WiiFaceCluster(controllerIndex, editing)
         }
@@ -247,10 +355,10 @@ private fun BoxScope.LocalWiiRemoteLayout(
         editorSizePercent = editorSizePercent,
         resetToken = resetToken,
         onSelect = onSelect,
-        padding = 18.dp,
-        baseX = (-46).dp,
+        padding = 10.dp,
+        baseX = (-42).dp,
     ) {
-        LocalButton("+", NativeInput.WiimoteButton.PLUS, controllerIndex, editing, Modifier.size(48.dp), circular = true, light = true)
+        LocalButton("+", NativeInput.WiimoteButton.PLUS, controllerIndex, editing, Modifier.size(44.dp), circular = true, light = true)
     }
     LocalEditableItem(
         prefs = prefs,
@@ -262,45 +370,45 @@ private fun BoxScope.LocalWiiRemoteLayout(
         editorSizePercent = editorSizePercent,
         resetToken = resetToken,
         onSelect = onSelect,
-        padding = 18.dp,
-        baseX = 46.dp,
+        padding = 10.dp,
+        baseX = 42.dp,
     ) {
-        LocalButton("−", NativeInput.WiimoteButton.MINUS, controllerIndex, editing, Modifier.size(48.dp), circular = true, light = true)
+        LocalButton("−", NativeInput.WiimoteButton.MINUS, controllerIndex, editing, Modifier.size(44.dp), circular = true, light = true)
     }
 }
 
 @Composable
 private fun WiiDpadCluster(controllerIndex: Int, editing: Boolean) {
-    Box(Modifier.size(188.dp)) {
+    Box(Modifier.size(170.dp)) {
         Box(Modifier.align(Alignment.TopCenter)) {
-            LocalButton("▲", NativeInput.WiimoteButton.UP, controllerIndex, editing, Modifier.size(62.dp), light = true)
+            LocalButton("▲", NativeInput.WiimoteButton.RIGHT, controllerIndex, editing, Modifier.size(56.dp), light = true)
         }
         Box(Modifier.align(Alignment.CenterStart)) {
-            LocalButton("◀", NativeInput.WiimoteButton.LEFT, controllerIndex, editing, Modifier.size(62.dp), light = true)
+            LocalButton("◀", NativeInput.WiimoteButton.UP, controllerIndex, editing, Modifier.size(56.dp), light = true)
         }
         Box(Modifier.align(Alignment.CenterEnd)) {
-            LocalButton("▶", NativeInput.WiimoteButton.RIGHT, controllerIndex, editing, Modifier.size(62.dp), light = true)
+            LocalButton("▶", NativeInput.WiimoteButton.DOWN, controllerIndex, editing, Modifier.size(56.dp), light = true)
         }
         Box(Modifier.align(Alignment.BottomCenter)) {
-            LocalButton("▼", NativeInput.WiimoteButton.DOWN, controllerIndex, editing, Modifier.size(62.dp), light = true)
+            LocalButton("▼", NativeInput.WiimoteButton.LEFT, controllerIndex, editing, Modifier.size(56.dp), light = true)
         }
     }
 }
 
 @Composable
 private fun WiiFaceCluster(controllerIndex: Int, editing: Boolean) {
-    Box(Modifier.size(206.dp)) {
+    Box(Modifier.size(184.dp)) {
         Box(Modifier.align(Alignment.TopCenter)) {
-            LocalButton("B", NativeInput.WiimoteButton.B, controllerIndex, editing, Modifier.size(66.dp), circular = true, light = true)
+            LocalButton("B", NativeInput.WiimoteButton.B, controllerIndex, editing, Modifier.size(60.dp), circular = true, light = true)
         }
         Box(Modifier.align(Alignment.CenterStart)) {
-            LocalButton("1", NativeInput.WiimoteButton.ONE, controllerIndex, editing, Modifier.size(66.dp), circular = true, light = true)
+            LocalButton("1", NativeInput.WiimoteButton.ONE, controllerIndex, editing, Modifier.size(60.dp), circular = true, light = true)
         }
         Box(Modifier.align(Alignment.CenterEnd)) {
-            LocalButton("A", NativeInput.WiimoteButton.A, controllerIndex, editing, Modifier.size(66.dp), circular = true, light = true)
+            LocalButton("A", NativeInput.WiimoteButton.A, controllerIndex, editing, Modifier.size(60.dp), circular = true, light = true)
         }
         Box(Modifier.align(Alignment.BottomCenter)) {
-            LocalButton("2", NativeInput.WiimoteButton.TWO, controllerIndex, editing, Modifier.size(66.dp), circular = true, light = true)
+            LocalButton("2", NativeInput.WiimoteButton.TWO, controllerIndex, editing, Modifier.size(60.dp), circular = true, light = true)
         }
     }
 }
@@ -562,48 +670,37 @@ private fun LocalButton(
     circular: Boolean = false,
     light: Boolean = false,
 ) {
-    var pressed by remember(mappingId, controllerIndex) { mutableStateOf(false) }
-    DisposableEffect(mappingId, controllerIndex) {
-        onDispose {
-            if (pressed) NativeInput.onOverlayButton(controllerIndex, mappingId, false)
-        }
+    val router = LocalSlideTouchRouterState.current
+    val pressed = !editing && router?.pressed?.get(mappingId) == true
+
+    DisposableEffect(mappingId, editing, router) {
+        onDispose { router?.unregisterBounds?.invoke(mappingId) }
     }
 
-    val input = if (!editing) {
-        Modifier.pointerInput(mappingId, controllerIndex) {
-            detectTapGestures(
-                onPress = {
-                    pressed = true
-                    NativeInput.onOverlayButton(controllerIndex, mappingId, true)
-                    try {
-                        tryAwaitRelease()
-                    } finally {
-                        pressed = false
-                        NativeInput.onOverlayButton(controllerIndex, mappingId, false)
-                    }
-                },
-            )
+    val boundsModifier = if (!editing && router != null) {
+        Modifier.onGloballyPositioned { coordinates ->
+            router.registerBounds(mappingId, coordinates.boundsInWindow())
         }
     } else {
         Modifier
     }
 
     val bg = when {
-        pressed -> LocalPadCyan.copy(alpha = 0.88f)
+        pressed -> LocalPadCyan.copy(alpha = 0.94f)
         light -> LocalPadLight
         else -> LocalPadDark
     }
-    val ink = if (light && !pressed) LocalPadWhite else LocalPadWhite
+    val ink = LocalPadWhite
 
     Box(
         modifier = modifier
             .background(bg, if (circular) CircleShape else RoundedCornerShape(14.dp))
             .border(
                 1.dp,
-                if (editing) LocalPadCyan.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.20f),
+                if (editing) LocalPadCyan.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.34f),
                 if (circular) CircleShape else RoundedCornerShape(14.dp),
             )
-            .then(input),
+            .then(boundsModifier),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, color = ink, fontWeight = FontWeight.Bold, fontSize = 16.sp)
