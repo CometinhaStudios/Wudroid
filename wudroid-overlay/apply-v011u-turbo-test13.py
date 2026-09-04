@@ -1,3 +1,4 @@
+# WUDROID_TURBO_TEST13_BUILDFIX6
 # BuildFix4: this Cemu revision exposes timer speed through
 # ActiveSettings::SetTimerShiftFactor(), not a public TimerShiftFactor field.
 #!/usr/bin/env python3
@@ -32,7 +33,7 @@ kt_anchor = '    external fun loadQuickState(path: String): Int\n'
 if kt_anchor not in native_kt:
     raise SystemExit('NativeEmulation.kt quick-state anchor missing')
 
-kt_insert = '''    // WUDROID_TURBO_TEST13\n    @JvmStatic\n    external fun setFastForwardEnabled(enabled: Boolean)\n\n'''
+kt_insert = '''    // WUDROID_TURBO_TEST13\n    @JvmStatic\n    external fun setFastForwardEnabled(enabled: Boolean)\n\n    @JvmStatic\n    external fun getFastForwardFactor(): Int\n\n'''
 native_kt = native_kt.replace(kt_anchor, kt_anchor + '\n' + kt_insert, 1)
 
 if '#include "config/ActiveSettings.h"' not in native_cpp:
@@ -61,6 +62,14 @@ Java_info_cemu_cemu_nativeinterface_NativeEmulation_setFastForwardEnabled(
     // normal 1x timing otherwise.
     ActiveSettings::SetTimerShiftFactor(enabled == JNI_TRUE ? 3 : 1);
 }
+
+extern "C" [[maybe_unused]] JNIEXPORT jint JNICALL
+Java_info_cemu_cemu_nativeinterface_NativeEmulation_getFastForwardFactor(
+    [[maybe_unused]] JNIEnv* env,
+    [[maybe_unused]] jclass clazz)
+{
+    return static_cast<jint>(ActiveSettings::GetTimerShiftFactor());
+}
 ''' + '\n'
 
 # ---------------------------------------------------------------------------
@@ -75,6 +84,7 @@ imports = [
     'import androidx.compose.foundation.layout.offset',
     'import androidx.compose.ui.unit.IntOffset',
     'import kotlin.math.roundToInt',
+    'import kotlinx.coroutines.delay',
 ]
 # WUDROID_TURBO_TEST13_BUILDFIX4
 # BuildFix3: include androidx.compose.foundation.layout.offset because the
@@ -106,7 +116,7 @@ state_anchor = '    val wudroidQuickStateContext = LocalContext.current // WUDRO
 if state_anchor not in screen:
     raise SystemExit('Quick State context state anchor missing')
 
-state_block = state_anchor + '''    // WUDROID_TURBO_TEST13\n    val wudroidTurboPrefs = remember(wudroidQuickStateContext) {\n        wudroidQuickStateContext.getSharedPreferences("wudroid_turbo", android.content.Context.MODE_PRIVATE)\n    }\n    var wudroidTurboEnabled by rememberSaveable { mutableStateOf(false) }\n    var wudroidTurboOffsetX by rememberSaveable {\n        mutableFloatStateOf(wudroidTurboPrefs.getFloat("offset_x", 0f))\n    }\n    var wudroidTurboOffsetY by rememberSaveable {\n        mutableFloatStateOf(wudroidTurboPrefs.getFloat("offset_y", -84f))\n    }\n\n    DisposableEffect(Unit) {\n        onDispose {\n            // Never leave another title/game running at 3x after this screen is gone.\n            NativeEmulation.setFastForwardEnabled(false)\n        }\n    }\n'''
+state_block = state_anchor + '''    // WUDROID_TURBO_TEST13\n    val wudroidTurboPrefs = remember(wudroidQuickStateContext) {\n        wudroidQuickStateContext.getSharedPreferences("wudroid_turbo", android.content.Context.MODE_PRIVATE)\n    }\n    var wudroidTurboEnabled by rememberSaveable { mutableStateOf(false) }\n    var wudroidTurboOffsetX by rememberSaveable {\n        mutableFloatStateOf(wudroidTurboPrefs.getFloat("offset_x", 0f))\n    }\n    var wudroidTurboOffsetY by rememberSaveable {\n        mutableFloatStateOf(wudroidTurboPrefs.getFloat("offset_y", -84f))\n    }\n    var wudroidTurboBackendFactor by rememberSaveable { mutableIntStateOf(1) }\n\n    // WUDROID_TURBO_TEST13_BUILDFIX5: keep Android from silently returning to 1x.\n    LaunchedEffect(wudroidTurboEnabled) {\n        if (!wudroidTurboEnabled) {\n            NativeEmulation.setFastForwardEnabled(false)\n            wudroidTurboBackendFactor = NativeEmulation.getFastForwardFactor()\n        } else {\n            while (true) {\n                NativeEmulation.setFastForwardEnabled(true)\n                wudroidTurboBackendFactor = NativeEmulation.getFastForwardFactor()\n                delay(250L)\n            }\n        }\n    }\n\n    DisposableEffect(Unit) {\n        onDispose {\n            // Never leave another title/game running at 3x after this screen is gone.\n            NativeEmulation.setFastForwardEnabled(false)\n        }\n    }\n'''
 screen = screen.replace(state_anchor, state_block, 1)
 
 # Insert just before the existing gamepad editor panel. This keeps the lightning
@@ -115,7 +125,7 @@ editor_anchor = '''        if (inputOverlayInputMode != DEFAULT) {\n            
 if editor_anchor not in screen:
     raise SystemExit('Gamepad editor invocation anchor missing')
 
-turbo_call = '''        // WUDROID_TURBO_TEST13_BUILDFIX1: explicit BoxScope for align.\n        Box(modifier = Modifier.fillMaxSize()) {\n            WudroidTurboButton(\n                modifier = Modifier\n                    .align(Alignment.BottomCenter)\n                    .offset {\n                        IntOffset(\n                            wudroidTurboOffsetX.roundToInt(),\n                            wudroidTurboOffsetY.roundToInt(),\n                        )\n                    },\n                enabled = wudroidTurboEnabled,\n                editing = inputOverlayInputMode != DEFAULT,\n                onToggle = {\n                    wudroidTurboEnabled = !wudroidTurboEnabled\n                    NativeEmulation.setFastForwardEnabled(wudroidTurboEnabled)\n                },\n                onDrag = { dx, dy ->\n                    wudroidTurboOffsetX += dx\n                    wudroidTurboOffsetY += dy\n                },\n                onDragFinished = {\n                    wudroidTurboPrefs.edit()\n                        .putFloat("offset_x", wudroidTurboOffsetX)\n                        .putFloat("offset_y", wudroidTurboOffsetY)\n                        .apply()\n                },\n            )\n        }\n\n'''
+turbo_call = '''        // WUDROID_TURBO_TEST13_BUILDFIX1: explicit BoxScope for align.\n        Box(modifier = Modifier.fillMaxSize()) {\n            WudroidTurboButton(\n                modifier = Modifier\n                    .align(Alignment.BottomCenter)\n                    .offset {\n                        IntOffset(\n                            wudroidTurboOffsetX.roundToInt(),\n                            wudroidTurboOffsetY.roundToInt(),\n                        )\n                    },\n                enabled = wudroidTurboEnabled,\n                backendFactor = wudroidTurboBackendFactor,\n                editing = inputOverlayInputMode != DEFAULT,\n                onToggle = {\n                    wudroidTurboEnabled = !wudroidTurboEnabled\n                    NativeEmulation.setFastForwardEnabled(wudroidTurboEnabled)\n                },\n                onDrag = { dx, dy ->\n                    wudroidTurboOffsetX += dx\n                    wudroidTurboOffsetY += dy\n                },\n                onDragFinished = {\n                    wudroidTurboPrefs.edit()\n                        .putFloat("offset_x", wudroidTurboOffsetX)\n                        .putFloat("offset_y", wudroidTurboOffsetY)\n                        .apply()\n                },\n            )\n        }\n\n'''
 screen = screen.replace(editor_anchor, turbo_call + editor_anchor, 1)
 
 function_anchor = '@Composable\nprivate fun EditInputsLayout('
@@ -126,6 +136,7 @@ turbo_fn = r'''@Composable
 private fun WudroidTurboButton(
     modifier: Modifier,
     enabled: Boolean,
+    backendFactor: Int,
     editing: Boolean,
     onToggle: () -> Unit,
     onDrag: (Float, Float) -> Unit,
@@ -169,7 +180,7 @@ private fun WudroidTurboButton(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = if (enabled) "3×" else "1×",
+                    text = if (enabled) "${backendFactor}×" else "1×",
                     color = if (enabled) WudroidCyan else WudroidDrawerMuted,
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
@@ -190,21 +201,25 @@ checks = {
     native_kt_path: [
         marker,
         'external fun setFastForwardEnabled(enabled: Boolean)',
+        'external fun getFastForwardFactor(): Int',
     ],
     native_cpp_path: [
         marker,
         '#include "config/ActiveSettings.h"',
         'ActiveSettings::SetTimerShiftFactor(enabled == JNI_TRUE ? 3 : 1);',
+        'NativeEmulation_getFastForwardFactor',
         jni_marker,
     ],
     screen_path: [
         marker,
         'WudroidTurboButton(',
+        'backendFactor = wudroidTurboBackendFactor',
         'import androidx.compose.foundation.layout.size',
         'import androidx.compose.foundation.layout.offset',
+        'import kotlinx.coroutines.delay',
         'Box(modifier = Modifier.fillMaxSize())',
         'text = "⚡"',
-        'text = if (enabled) "3×" else "1×"',
+        'text = if (enabled) "${backendFactor}×" else "1×"',
         'NativeEmulation.setFastForwardEnabled(wudroidTurboEnabled)',
         'detectDragGestures(',
         'getSharedPreferences("wudroid_turbo"',
