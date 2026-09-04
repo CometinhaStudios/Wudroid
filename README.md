@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test19 BuildFix1
+
+Corrige o `else` órfão gerado pelo patch Test19 em `EmulationScreen.kt`. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST19-BUILDFIX1.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test19
 
 Corrige o Wii Remote usando eixos reais do Nunchuk, unifica o Wii entre Player 1/Player 2 e torna o GamePad do multiplayer o padrão visual da emulação. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST19.md`.

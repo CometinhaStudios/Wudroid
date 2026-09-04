@@ -47,36 +47,25 @@ if call_end < 0:
     raise SystemExit("Test19 malformed InputOverlaySurface")
 original_call = screen[call_start:call_end]
 
-# Find end of the whole Test5 if/else block by brace matching from its if.
-if_start = screen.find("        if (wudroidPlayer1IsWiimote", start)
-if if_start < 0:
-    raise SystemExit("Test19 old Wiimote if missing")
-brace = screen.find("{", if_start)
-depth = 0
-in_string = False
-escaped = False
-block_end = -1
-for i in range(brace, len(screen)):
-    ch = screen[i]
-    if in_string:
-        if escaped:
-            escaped = False
-        elif ch == "\\":
-            escaped = True
-        elif ch == '"':
-            in_string = False
-        continue
-    if ch == '"':
-        in_string = True
-    elif ch == '{':
-        depth += 1
-    elif ch == '}':
-        depth -= 1
-        if depth == 0:
-            block_end = i + 1
-            break
-if block_end < 0:
-    raise SystemExit("Test19 old wrapper malformed")
+# Find the end of the WHOLE Test5 if/else wrapper.
+# BuildFix1: the previous implementation brace-matched from the first `if {`
+# and stopped at the end of the TRUE branch, before `else { ... }`.
+# That left the old `else` behind and generated invalid Kotlin:
+#     if (...) { ... } else { ... }
+#     else { ... }
+#
+# The InputOverlaySurface call we extracted above is inside Test5's ELSE branch,
+# so the wrapper must end at the closing brace immediately after that call.
+tail = call_end
+while tail < len(screen) and screen[tail] in " \t\r\n":
+    tail += 1
+
+if tail >= len(screen) or screen[tail] != '}':
+    raise SystemExit("Test19 BuildFix1: old Test5 else closing brace missing")
+
+block_end = tail + 1
+if block_end < len(screen) and screen[block_end] == '\r':
+    block_end += 1
 if block_end < len(screen) and screen[block_end] == '\n':
     block_end += 1
 
@@ -86,6 +75,16 @@ replacement = f"""        // {marker}\n        val wudroidPlayer1ControllerType 
 
 screen = screen[:start] + replacement + screen[block_end:]
 screen_path.write_text(screen)
+
+# BuildFix1 regression guard: after replacement there must not be a second
+# orphaned else from the old Test5 wrapper immediately after the new block.
+test19_pos = screen.find("// " + marker)
+if test19_pos >= 0:
+    next_input_mode = screen.find("if (inputOverlayInputMode != DEFAULT)", test19_pos)
+    region_end = next_input_mode if next_input_mode >= 0 else min(len(screen), test19_pos + 5000)
+    region = screen[test19_pos:region_end]
+    if "\n        else {\n            InputOverlaySurface(" in region:
+        raise SystemExit("Test19 BuildFix1 regression: orphan old else remains")
 
 for required in (
     marker,
