@@ -89,6 +89,18 @@ private fun BoxScope.WiiRemoteDolphinLayout(
         }
     }
 
+    LanEditableSlot(prefs, "wii_dpad", Alignment.Center, editing) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            LanRemoteButton("↑", NativeInput.WiimoteButton.UP, editing, Modifier.size(42.dp), false, true)
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                LanRemoteButton("←", NativeInput.WiimoteButton.LEFT, editing, Modifier.size(42.dp), false, true)
+                Spacer(Modifier.size(42.dp))
+                LanRemoteButton("→", NativeInput.WiimoteButton.RIGHT, editing, Modifier.size(42.dp), false, true)
+            }
+            LanRemoteButton("↓", NativeInput.WiimoteButton.DOWN, editing, Modifier.size(42.dp), false, true)
+        }
+    }
+
     LanEditableSlot(prefs, "wii_system", Alignment.BottomCenter, editing) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -344,39 +356,32 @@ private fun LanVirtualStick(
 private fun WiiNunchukStick(editing: Boolean) {
     var x by remember { mutableFloatStateOf(0f) }
     var y by remember { mutableFloatStateOf(0f) }
-    var left by remember { mutableStateOf(false) }
-    var right by remember { mutableStateOf(false) }
-    var up by remember { mutableStateOf(false) }
-    var down by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val travel = with(density) { 30.dp.toPx() }
 
-    fun emitDirections(nx: Float, ny: Float) {
-        val nl = nx < -0.28f
-        val nr = nx > 0.28f
-        val nu = ny < -0.28f
-        val nd = ny > 0.28f
-        if (nl != left) { left = nl; WudroidLanMultiplayer.sendRemoteButton(WudroidWiimoteMapping.NUNCHUK_LEFT, nl) }
-        if (nr != right) { right = nr; WudroidLanMultiplayer.sendRemoteButton(WudroidWiimoteMapping.NUNCHUK_RIGHT, nr) }
-        if (nu != up) { up = nu; WudroidLanMultiplayer.sendRemoteButton(WudroidWiimoteMapping.NUNCHUK_UP, nu) }
-        if (nd != down) { down = nd; WudroidLanMultiplayer.sendRemoteButton(WudroidWiimoteMapping.NUNCHUK_DOWN, nd) }
+    fun emitAxes(nx: Float, ny: Float) {
+        WudroidLanMultiplayer.sendRemoteAxis(
+            NativeInput.WiimoteButton.NUNCHUCK_LEFT,
+            (-nx).coerceAtLeast(0f),
+        )
+        WudroidLanMultiplayer.sendRemoteAxis(
+            NativeInput.WiimoteButton.NUNCHUCK_RIGHT,
+            nx.coerceAtLeast(0f),
+        )
+        WudroidLanMultiplayer.sendRemoteAxis(
+            NativeInput.WiimoteButton.NUNCHUCK_UP,
+            (-ny).coerceAtLeast(0f),
+        )
+        WudroidLanMultiplayer.sendRemoteAxis(
+            NativeInput.WiimoteButton.NUNCHUCK_DOWN,
+            ny.coerceAtLeast(0f),
+        )
     }
 
     fun releaseAll() {
-        for (id in intArrayOf(
-            WudroidWiimoteMapping.NUNCHUK_LEFT,
-            WudroidWiimoteMapping.NUNCHUK_RIGHT,
-            WudroidWiimoteMapping.NUNCHUK_UP,
-            WudroidWiimoteMapping.NUNCHUK_DOWN,
-        )) {
-            WudroidLanMultiplayer.sendRemoteButton(id, false)
-        }
-        left = false
-        right = false
-        up = false
-        down = false
         x = 0f
         y = 0f
+        emitAxes(0f, 0f)
     }
 
     DisposableEffect(Unit) { onDispose { releaseAll() } }
@@ -388,7 +393,7 @@ private fun WiiNunchukStick(editing: Boolean) {
                 val cy = size.height / 2f
                 x = ((px - cx) / cx).coerceIn(-1f, 1f)
                 y = ((py - cy) / cy).coerceIn(-1f, 1f)
-                emitDirections(x, y)
+                emitAxes(x, y)
             }
             detectDragGestures(
                 onDragStart = { p -> update(p.x, p.y) },

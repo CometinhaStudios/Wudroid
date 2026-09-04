@@ -100,6 +100,7 @@ object WudroidLanMultiplayer {
     private const val REJECT_V2 = "WUDROID_REJECT_V2"
     private const val INPUT_BUTTON_V3 = "WUDROID_INPUT_BUTTON_V3"
     private const val INPUT_STICKS_V3 = "WUDROID_INPUT_STICKS_V3"
+    private const val INPUT_AXIS_V5 = "WUDROID_INPUT_AXIS_V5"
     private const val CONTROLLER_KIND_V4 = "WUDROID_CONTROLLER_KIND_V4"
     private const val LEAVE_V3 = "WUDROID_LEAVE_V3"
 
@@ -179,6 +180,31 @@ object WudroidLanMultiplayer {
                                         mainHandler.post {
                                             runCatching {
                                                 NativeInput.onOverlayButton(1, mappingId, pressed)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            text.startsWith("$INPUT_AXIS_V5|") -> {
+                                val parts = text.split("|", limit = 4)
+                                if (parts.size >= 4) {
+                                    val clientId = clean(parts[1])
+                                    val mappingId = parts[2].toIntOrNull()
+                                    val value = parts[3].toFloatOrNull()
+                                    val participant = participants[clientId]
+                                    if (participant?.controllerKind == "WIIMOTE" &&
+                                        mappingId != null &&
+                                        mappingId in NativeInput.WiimoteButton.NUNCHUCK_UP..NativeInput.WiimoteButton.NUNCHUCK_RIGHT &&
+                                        value != null
+                                    ) {
+                                        mainHandler.post {
+                                            runCatching {
+                                                NativeInput.onOverlayAxis(
+                                                    1,
+                                                    mappingId,
+                                                    value.coerceIn(0f, 1f),
+                                                )
                                             }
                                         }
                                     }
@@ -475,6 +501,19 @@ object WudroidLanMultiplayer {
         sendClientInput(packet)
     }
 
+    fun sendRemoteAxis(mappingId: Int, value: Float) {
+        val clientId = joinedClientId
+        if (clientId.isBlank()) return
+        if (mappingId !in NativeInput.WiimoteButton.NUNCHUCK_UP..NativeInput.WiimoteButton.NUNCHUCK_RIGHT) return
+        val packet = listOf(
+            INPUT_AXIS_V5,
+            clean(clientId),
+            mappingId.toString(),
+            value.coerceIn(0f, 1f).toString(),
+        ).joinToString("|")
+        sendClientInput(packet)
+    }
+
     fun sendRemoteSticks(lx: Float, ly: Float, rx: Float, ry: Float) {
         val clientId = joinedClientId
         if (clientId.isBlank()) return
@@ -563,6 +602,10 @@ object WudroidLanMultiplayer {
                 NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_RIGHT, 0f)
                 NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_UP, 0f)
                 NativeInput.onOverlayAxis(1, NativeInput.ProButton.STICKR_DOWN, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.WiimoteButton.NUNCHUCK_UP, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.WiimoteButton.NUNCHUCK_DOWN, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.WiimoteButton.NUNCHUCK_LEFT, 0f)
+                NativeInput.onOverlayAxis(1, NativeInput.WiimoteButton.NUNCHUCK_RIGHT, 0f)
             }
         }
     }

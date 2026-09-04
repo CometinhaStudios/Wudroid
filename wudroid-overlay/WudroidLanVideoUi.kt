@@ -249,7 +249,7 @@ fun WudroidLanFullscreenMonitor(
                             ),
                         ) {
                             Text(
-                                "Wii Remote",
+                                "Wii + Nunchuk",
                                 color = if (controllerKind == "WIIMOTE") Color.Black else Color.White,
                             )
                         }

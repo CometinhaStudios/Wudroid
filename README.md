@@ -1,3 +1,7 @@
+# STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test19
+
+Corrige o Wii Remote usando eixos reais do Nunchuk, unifica o Wii entre Player 1/Player 2 e torna o GamePad do multiplayer o padrão visual da emulação. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST19.md`.
+
 # STATUS ATUAL: Wudroid 0.1.2 — Local Multiplayer Test18 BuildFix1
 
 Corrige a compilação Kotlin removendo o import interno de `weight` do `WudroidLanVideoUi.kt`. Veja `README-WUDROID-0.1.2-LOCAL-MULTIPLAYER-TEST18-BUILDFIX1.md`.
