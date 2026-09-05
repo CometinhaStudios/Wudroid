@@ -3,10 +3,14 @@ from pathlib import Path
 import re
 
 screen_path = Path("cemu-engine/src/android/app/src/main/java/info/cemu/cemu/emulation/EmulationScreen.kt")
+overlay_path = Path("cemu-engine/src/android/app/src/main/java/info/cemu/cemu/emulation/WudroidLocalControllerOverlay.kt")
 if not screen_path.exists():
-    raise SystemExit("TV Test1: EmulationScreen.kt missing")
+    raise SystemExit("TV Test1 BuildFix1: EmulationScreen.kt missing")
+if not overlay_path.exists():
+    raise SystemExit("TV Test1 BuildFix1: WudroidLocalControllerOverlay.kt missing")
 
 s = screen_path.read_text()
+overlay_source = overlay_path.read_text()
 marker = "WUDROID_TV_MODE_TEST1"
 if marker in s:
     print("Wudroid 0.1.2TV Test1 already applied")
@@ -14,14 +18,24 @@ if marker in s:
 
 required_before = [
     "WUDROID_LAYOUT14_RUNTIMEFIX1",
-    "WUDROID_LAYOUT14_RUNTIMEFIX2",
     'text = "WUDROID"',
     'text = "Menu rápido"',
     "wudroidMainSurfaceView",
 ]
 missing = [x for x in required_before if x not in s]
 if missing:
-    raise SystemExit("TV Test1: required current base missing: " + ", ".join(missing))
+    raise SystemExit("TV Test1 BuildFix1: required current screen base missing: " + ", ".join(missing))
+
+# RuntimeFix2 is intentionally a marker of WudroidLocalControllerOverlay.kt,
+# not EmulationScreen.kt. Test1 originally checked the wrong file and stopped
+# the GitHub Actions build even though RuntimeFix2 had been applied correctly.
+overlay_required = [
+    "WUDROID_LAYOUT14_RUNTIMEFIX2",
+    "LocalSlideTouchRouter",
+]
+overlay_missing = [x for x in overlay_required if x not in overlay_source]
+if overlay_missing:
+    raise SystemExit("TV Test1 BuildFix1: required controller base missing: " + ", ".join(overlay_missing))
 
 
 def ensure_import(text: str, imp: str) -> str:
