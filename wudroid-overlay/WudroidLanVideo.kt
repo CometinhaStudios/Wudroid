@@ -162,7 +162,8 @@ object WudroidLanVideoHost {
         val captureStartedNs = System.nanoTime()
 
         val target =
-            WudroidLanMultiplayer.videoTarget()
+            WudroidTvDirectHost.videoTarget()
+                ?: WudroidLanMultiplayer.videoTarget()
 
         val surfaceView =
             surfaceRef?.get()
