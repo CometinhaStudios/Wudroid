@@ -114,6 +114,9 @@ jobs:
           cp wudroid-overlay/WudroidLanVideo.kt "$JAVA/WudroidLanVideo.kt"
           cp wudroid-overlay/WudroidTvDirect.kt "$JAVA/WudroidTvDirect.kt"
           cp wudroid-overlay/WudroidTvReceiverActivity.kt "$JAVA/WudroidTvReceiverActivity.kt"
+          cp wudroid-overlay/WudroidCastOptionsProvider.kt "$JAVA/WudroidCastOptionsProvider.kt"
+          cp wudroid-overlay/WudroidCastController.kt "$JAVA/WudroidCastController.kt"
+          cp wudroid-overlay/WudroidCastHlsServer.kt "$JAVA/WudroidCastHlsServer.kt"
           cp wudroid-overlay/WudroidLanVideoUi.kt "$JAVA/WudroidLanVideoUi.kt"
           cp wudroid-overlay/WudroidLanRemoteOverlay.kt "$JAVA/WudroidLanRemoteOverlay.kt"
           cp wudroid-overlay/WudroidLocalHotspot.kt "$JAVA/WudroidLocalHotspot.kt"
@@ -180,6 +183,7 @@ jobs:
           python3 wudroid-overlay/apply-v012tv-test1.py
           python3 wudroid-overlay/apply-v012tv-test1-runtimefix1.py
           python3 wudroid-overlay/apply-v012tv-test2-directlink1.py
+          python3 wudroid-overlay/apply-v012tv-test3-caststream1.py
 
           python3 - <<'PY'
           from pathlib import Path
@@ -190,9 +194,9 @@ jobs:
           s = gradle.read_text()
           s = s.replace('applicationId = "info.cemu.cemu"',
                         'applicationId = "com.cometinhastudios.wudroid"')
-          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 60', s)
+          s = re.sub(r'versionCode\s*=\s*(?:getVersionCode\(\)|\d+)', 'versionCode = 61', s)
           s = re.sub(r'versionName\s*=\s*(?:getVersionName\(\)|"[^"]*")',
-                     'versionName = "0.1.2TV-test2-directlink1-buildfix1"', s)
+                     'versionName = "0.1.2TV-test3-caststream1"', s)
           gradle.write_text(s)
 
           strings = app / "src/main/res/values/strings.xml"
@@ -251,21 +255,21 @@ jobs:
             -dname "CN=Wudroid Build,O=CometinhaStudios,C=BR" >/dev/null 2>&1
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -f -p 4 \
-            "$APK" out/Wudroid-0.1.2TV-Test2-DirectLink1-BuildFix1-aligned.apk
+            "$APK" out/Wudroid-0.1.2TV-Test3-CastStream1-aligned.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" sign \
             --ks out/wudroid-build.jks \
             --ks-pass pass:wudroid \
             --key-pass pass:wudroid \
-            --out out/Wudroid-0.1.2TV-Test2-DirectLink1-BuildFix1.apk \
-            out/Wudroid-0.1.2TV-Test2-DirectLink1-BuildFix1-aligned.apk
+            --out out/Wudroid-0.1.2TV-Test3-CastStream1.apk \
+            out/Wudroid-0.1.2TV-Test3-CastStream1-aligned.apk
 
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose \
-            out/Wudroid-0.1.2TV-Test2-DirectLink1-BuildFix1.apk
+            out/Wudroid-0.1.2TV-Test3-CastStream1.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: Wudroid-0.1.2TV-Test2-DirectLink1-BuildFix1-APK
-          path: out/Wudroid-0.1.2TV-Test2-DirectLink1-BuildFix1.apk
+          name: Wudroid-0.1.2TV-Test3-CastStream1-APK
+          path: out/Wudroid-0.1.2TV-Test3-CastStream1.apk
           if-no-files-found: error
           compression-level: 0

@@ -30,6 +30,7 @@ data class WudroidVideoTarget(
 )
 
 object WudroidLanVideoHost {
+    // WUDROID_TV_CAST_STREAM1: H.264 can feed LAN UDP and/or local Cast HLS.
     private const val MIME = "video/avc"
     private const val MAGIC = 0x57564839
     private const val HEADER_SIZE = 28
@@ -164,12 +165,13 @@ object WudroidLanVideoHost {
         val target =
             WudroidTvDirectHost.videoTarget()
                 ?: WudroidLanMultiplayer.videoTarget()
+        val castStreaming = WudroidCastHlsServer.isRunning() // WUDROID_TV_CAST_STREAM1
 
         val surfaceView =
             surfaceRef?.get()
 
         if (
-            target == null ||
+            (target == null && !castStreaming) ||
             surfaceView == null ||
             !surfaceView.holder.surface.isValid ||
             surfaceView.width <= 1 ||
@@ -352,7 +354,7 @@ object WudroidLanVideoHost {
 
     private fun encodeBitmap(
         bitmap: Bitmap,
-        target: WudroidVideoTarget,
+        target: WudroidVideoTarget?,
     ) {
         val codec = encoder ?: return
 
@@ -413,7 +415,7 @@ object WudroidLanVideoHost {
 
     private fun drainEncoder(
         codec: MediaCodec,
-        target: WudroidVideoTarget,
+        target: WudroidVideoTarget?,
     ) {
         while (true) {
             val index =
@@ -456,37 +458,56 @@ object WudroidLanVideoHost {
 
                             if (isConfig) {
                                 cachedCodecConfig = bytes
-
-                                sendAccessUnit(
+                                WudroidCastHlsServer.onAccessUnit(
                                     bytes,
-                                    MediaCodec
-                                        .BUFFER_FLAG_CODEC_CONFIG,
+                                    MediaCodec.BUFFER_FLAG_CODEC_CONFIG,
                                     info.presentationTimeUs,
-                                    target,
                                 )
+
+                                if (target != null) {
+                                    sendAccessUnit(
+                                        bytes,
+                                        MediaCodec
+                                            .BUFFER_FLAG_CODEC_CONFIG,
+                                        info.presentationTimeUs,
+                                        target,
+                                    )
+                                }
                             } else {
                                 if (isKey) {
-                                    cachedCodecConfig?.let {
-                                        sendAccessUnit(
-                                            it,
-                                            MediaCodec
-                                                .BUFFER_FLAG_CODEC_CONFIG,
+                                    cachedCodecConfig?.let { config ->
+                                        WudroidCastHlsServer.onAccessUnit(
+                                            config,
+                                            MediaCodec.BUFFER_FLAG_CODEC_CONFIG,
                                             info.presentationTimeUs,
-                                            target,
                                         )
+                                        if (target != null) {
+                                            sendAccessUnit(
+                                                config,
+                                                MediaCodec
+                                                    .BUFFER_FLAG_CODEC_CONFIG,
+                                                info.presentationTimeUs,
+                                                target,
+                                            )
+                                        }
                                     }
                                 }
 
-                                sendAccessUnit(
+                                val frameFlags =
+                                    if (isKey) MediaCodec.BUFFER_FLAG_KEY_FRAME else 0
+                                WudroidCastHlsServer.onAccessUnit(
                                     bytes,
-                                    if (isKey)
-                                        MediaCodec
-                                            .BUFFER_FLAG_KEY_FRAME
-                                    else
-                                        0,
+                                    frameFlags,
                                     info.presentationTimeUs,
-                                    target,
                                 )
+                                if (target != null) {
+                                    sendAccessUnit(
+                                        bytes,
+                                        frameFlags,
+                                        info.presentationTimeUs,
+                                        target,
+                                    )
+                                }
                             }
                         }
                     }
