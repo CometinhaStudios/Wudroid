@@ -16,14 +16,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * WUDROID_TV_CAST_STREAM1
+ * WUDROID_TV_CAST_SYNCFIX1
  *
  * Tiny live-HLS server fed directly by the existing Wudroid H.264 encoder.
  * The Google Cast Default Media Receiver fetches this URL from the phone,
  * therefore no Wudroid APK or receiver app is required on the TV.
  */
 object WudroidCastHlsServer {
-    private const val MAX_SEGMENTS = 8
-    private const val TARGET_DURATION_SECONDS = 1
+    private const val MAX_SEGMENTS = 45
     private const val PMT_PID = 0x0100
     private const val VIDEO_PID = 0x0101
 
@@ -247,12 +247,26 @@ object WudroidCastHlsServer {
     private fun playlistText(): String = synchronized(lock) {
         val snapshot = segments.toList()
         val firstSeq = snapshot.firstOrNull()?.sequence ?: nextSequence
+        // HLS requires TARGETDURATION to be at least the ceiling of the longest
+        // EXTINF currently advertised. The first CastStream hard-coded 1 second,
+        // while Android encoders can occasionally deliver a keyframe after >1.0s.
+        // Shaka/CAF may then stop following the live edge. Keep it spec-correct.
+        val targetDuration = kotlin.math.ceil(
+            snapshot.maxOfOrNull { it.durationSeconds } ?: 1.0
+        ).toInt().coerceIn(1, 4)
+
         buildString {
             append("#EXTM3U\n")
             append("#EXT-X-VERSION:3\n")
-            append("#EXT-X-TARGETDURATION:$TARGET_DURATION_SECONDS\n")
+            append("#EXT-X-TARGETDURATION:$targetDuration\n")
             append("#EXT-X-MEDIA-SEQUENCE:$firstSeq\n")
             append("#EXT-X-INDEPENDENT-SEGMENTS\n")
+            // Ask the receiver to begin close to the live edge instead of at the
+            // oldest segment in the sliding window. This keeps controller/video
+            // latency from growing after reconnects.
+            if (snapshot.size >= 4) {
+                append("#EXT-X-START:TIME-OFFSET=-3.000,PRECISE=NO\n")
+            }
             for (segment in snapshot) {
                 append("#EXTINF:")
                 append(String.format(java.util.Locale.US, "%.3f", segment.durationSeconds))
