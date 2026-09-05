@@ -284,8 +284,18 @@ new_mode_body = '''            Column {
                 }
             }
 '''
+# BuildFix1: TV Test1 still names the old action "Desconectar TV".
+# DirectLink1 originally searched only for "Parar transmissão", so the patch
+# aborted before Kotlin compilation. Accept either base wording.
 if old_mode_body not in s:
-    raise SystemExit("TV DirectLink1: mode dialog body not found")
+    legacy_mode_body = old_mode_body.replace(
+        'Text("Parar transmissão", color = Color(0xFFFF7777))',
+        'Text("Desconectar TV", color = Color(0xFFFF7777))',
+    )
+    if legacy_mode_body in s:
+        old_mode_body = legacy_mode_body
+if old_mode_body not in s:
+    raise SystemExit("TV DirectLink1 BuildFix1: mode dialog body not found")
 s = s.replace(old_mode_body, new_mode_body, 1)
 
 # Replace picker invocation: in-app LAN discovery, no Settings.ACTION_CAST_SETTINGS.
