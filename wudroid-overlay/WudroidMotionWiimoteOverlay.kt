@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -76,7 +75,7 @@ fun WudroidMotionWiimoteOverlay(
             MotionRoundButton("2", NativeInput.WiimoteButton.TWO, controllerIndex, 58)
             Spacer(Modifier.height(18.dp))
             MotionRoundButton("B", NativeInput.WiimoteButton.B, controllerIndex, 54)
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(12.dp))
             Row {
                 repeat(4) {
                     Box(Modifier.padding(5.dp).size(9.dp).background(MotionRemoteBlue, CircleShape))
