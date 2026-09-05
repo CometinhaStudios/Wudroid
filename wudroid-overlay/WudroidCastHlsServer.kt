@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * WUDROID_TV_CAST_STREAM1
  * WUDROID_TV_CAST_SYNCFIX1
+ * WUDROID_TV_CAST_SYNCFIX2
  *
  * Tiny live-HLS server fed directly by the existing Wudroid H.264 encoder.
  * The Google Cast Default Media Receiver fetches this URL from the phone,
@@ -103,7 +104,9 @@ object WudroidCastHlsServer {
 
     fun isRunning(): Boolean = running.get()
 
-    fun isReady(): Boolean = synchronized(lock) { segments.isNotEmpty() }
+    // Start the receiver only after a small live window exists. Loading with a
+    // single segment made CAF/Shaka show the first frame and then sit buffering.
+    fun isReady(): Boolean = synchronized(lock) { segments.size >= 3 }
 
     fun playlistUrl(context: Context): String? {
         if (!running.get() || port <= 0) return null
@@ -207,13 +210,21 @@ object WudroidCastHlsServer {
                 val method = parts.getOrNull(0) ?: "GET"
                 val path = parts.getOrNull(1)?.substringBefore('?') ?: "/"
 
-                // Consume request headers.
+                val headers = linkedMapOf<String, String>()
                 while (true) {
                     val line = readAsciiLine(input) ?: break
                     if (line.isEmpty()) break
+                    val colon = line.indexOf(':')
+                    if (colon > 0) {
+                        headers[line.substring(0, colon).trim().lowercase()] =
+                            line.substring(colon + 1).trim()
+                    }
                 }
 
                 when {
+                    method.equals("OPTIONS", ignoreCase = true) -> {
+                        sendResponse(client, 204, "No Content", "text/plain", ByteArray(0), false)
+                    }
                     path == "/wudroid/live.m3u8" -> {
                         val body = playlistText().toByteArray(StandardCharsets.UTF_8)
                         sendResponse(
@@ -233,7 +244,33 @@ object WudroidCastHlsServer {
                         if (body == null) {
                             sendResponse(client, 404, "Not Found", "text/plain", "gone".toByteArray(), method != "HEAD")
                         } else {
-                            sendResponse(client, 200, "OK", "video/mp2t", body, method != "HEAD")
+                            val range = parseByteRange(headers["range"], body.size)
+                            if (range != null) {
+                                val (start, endInclusive) = range
+                                val partial = body.copyOfRange(start, endInclusive + 1)
+                                sendResponse(
+                                    client,
+                                    206,
+                                    "Partial Content",
+                                    "video/mp2t",
+                                    partial,
+                                    method != "HEAD",
+                                    extraHeaders = mapOf(
+                                        "Content-Range" to "bytes $start-$endInclusive/${body.size}",
+                                        "Accept-Ranges" to "bytes",
+                                    ),
+                                )
+                            } else {
+                                sendResponse(
+                                    client,
+                                    200,
+                                    "OK",
+                                    "video/mp2t",
+                                    body,
+                                    method != "HEAD",
+                                    extraHeaders = mapOf("Accept-Ranges" to "bytes"),
+                                )
+                            }
                         }
                     }
                     else -> {
@@ -247,13 +284,11 @@ object WudroidCastHlsServer {
     private fun playlistText(): String = synchronized(lock) {
         val snapshot = segments.toList()
         val firstSeq = snapshot.firstOrNull()?.sequence ?: nextSequence
-        // HLS requires TARGETDURATION to be at least the ceiling of the longest
-        // EXTINF currently advertised. The first CastStream hard-coded 1 second,
-        // while Android encoders can occasionally deliver a keyframe after >1.0s.
-        // Shaka/CAF may then stop following the live edge. Keep it spec-correct.
-        val targetDuration = kotlin.math.ceil(
-            snapshot.maxOfOrNull { it.durationSeconds } ?: 1.0
-        ).toInt().coerceIn(1, 4)
+        // Keep TARGETDURATION constant for the life of the presentation. HLS
+        // clients may reject a live playlist whose target duration changes between
+        // reloads. SyncFix2 explicitly requests IDRs every ~0.8 s, so 2 seconds
+        // leaves safe headroom while still allowing frequent playlist reloads.
+        val targetDuration = 2
 
         buildString {
             append("#EXTM3U\n")
@@ -261,6 +296,7 @@ object WudroidCastHlsServer {
             append("#EXT-X-TARGETDURATION:$targetDuration\n")
             append("#EXT-X-MEDIA-SEQUENCE:$firstSeq\n")
             append("#EXT-X-INDEPENDENT-SEGMENTS\n")
+            append("#EXT-X-ALLOW-CACHE:NO\n")
             // Ask the receiver to begin close to the live edge instead of at the
             // oldest segment in the sliding window. This keeps controller/video
             // latency from growing after reconnects.
@@ -283,6 +319,7 @@ object WudroidCastHlsServer {
         contentType: String,
         body: ByteArray,
         includeBody: Boolean,
+        extraHeaders: Map<String, String> = emptyMap(),
     ) {
         val out = BufferedOutputStream(socket.getOutputStream())
         val headers = buildString {
@@ -291,11 +328,40 @@ object WudroidCastHlsServer {
             append("Content-Length: ${body.size}\r\n")
             append("Cache-Control: no-store, no-cache, must-revalidate\r\n")
             append("Access-Control-Allow-Origin: *\r\n")
+            append("Access-Control-Allow-Methods: GET, HEAD, OPTIONS\r\n")
+            append("Access-Control-Allow-Headers: Range, Accept-Encoding, Content-Type, Origin\r\n")
+            append("Access-Control-Expose-Headers: Content-Length, Content-Range, Accept-Ranges\r\n")
+            for ((name, value) in extraHeaders) {
+                append(name).append(": ").append(value).append("\r\n")
+            }
             append("Connection: close\r\n\r\n")
         }.toByteArray(StandardCharsets.US_ASCII)
         out.write(headers)
         if (includeBody) out.write(body)
         out.flush()
+    }
+
+    private fun parseByteRange(value: String?, size: Int): Pair<Int, Int>? {
+        if (value.isNullOrBlank() || size <= 0) return null
+        val raw = value.trim()
+        if (!raw.startsWith("bytes=", ignoreCase = true)) return null
+        val spec = raw.substringAfter('=').substringBefore(',').trim()
+        val dash = spec.indexOf('-')
+        if (dash < 0) return null
+        val startText = spec.substring(0, dash).trim()
+        val endText = spec.substring(dash + 1).trim()
+
+        if (startText.isEmpty()) {
+            val suffix = endText.toIntOrNull()?.coerceAtLeast(1) ?: return null
+            val start = (size - suffix).coerceAtLeast(0)
+            return start to (size - 1)
+        }
+
+        val start = startText.toIntOrNull()?.coerceAtLeast(0) ?: return null
+        if (start >= size) return null
+        val end = if (endText.isEmpty()) size - 1 else
+            endText.toIntOrNull()?.coerceIn(start, size - 1) ?: return null
+        return start to end
     }
 
     private fun readAsciiLine(input: BufferedInputStream): String? {

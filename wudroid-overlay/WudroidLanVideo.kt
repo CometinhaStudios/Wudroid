@@ -8,6 +8,7 @@ import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.PixelCopy
@@ -43,6 +44,11 @@ object WudroidLanVideoHost {
     private const val VIDEO_BITRATE = 3_200_000
     private const val I_FRAME_INTERVAL_SECONDS = 1
     private const val FRAME_INTERVAL_NS = 16_666_667L
+    // WUDROID_TV_CAST_SYNCFIX2: HLS needs recurring IDR frames so each live
+    // segment can close and the Cast receiver can keep advancing. Some Android
+    // encoders do not honor KEY_I_FRAME_INTERVAL reliably with byte-buffer input,
+    // so request a sync frame explicitly while Cast streaming is active.
+    private const val CAST_SYNC_FRAME_INTERVAL_US = 800_000L
 
     private val active = AtomicBoolean(false)
 
@@ -66,6 +72,7 @@ object WudroidLanVideoHost {
     private var encoderBufferInfo = MediaCodec.BufferInfo()
     private var cachedCodecConfig: ByteArray? = null
     private var nextUnitId = 1
+    private var lastCastSyncRequestUs = 0L
 
     private val senderSocket by lazy {
         DatagramSocket().apply {
@@ -334,6 +341,7 @@ object WudroidLanVideoHost {
             encoder = codec
             encoderBufferInfo = MediaCodec.BufferInfo()
             cachedCodecConfig = null
+            lastCastSyncRequestUs = 0L
             true
         } catch (_: Throwable) {
             releaseEncoder()
@@ -345,6 +353,7 @@ object WudroidLanVideoHost {
         val codec = encoder
         encoder = null
         cachedCodecConfig = null
+        lastCastSyncRequestUs = 0L
 
         if (codec != null) {
             runCatching { codec.stop() }
@@ -385,6 +394,10 @@ object WudroidLanVideoHost {
 
             val pts = presentationTimeUs()
 
+            if (WudroidCastHlsServer.isRunning()) {
+                maybeRequestCastSyncFrame(codec, pts)
+            }
+
             if (!wrote) {
                 codec.queueInputBuffer(
                     inputIndex,
@@ -412,6 +425,23 @@ object WudroidLanVideoHost {
 
     private fun presentationTimeUs(): Long =
         System.nanoTime() / 1_000L
+
+    private fun maybeRequestCastSyncFrame(codec: MediaCodec, nowUs: Long) {
+        val previous = lastCastSyncRequestUs
+        if (previous != 0L && nowUs - previous < CAST_SYNC_FRAME_INTERVAL_US) return
+
+        // Set the timestamp before the call so a codec that rejects the runtime
+        // parameter cannot spin and retry on every 60-fps frame. The normal
+        // KEY_I_FRAME_INTERVAL remains as a fallback.
+        lastCastSyncRequestUs = nowUs
+        runCatching {
+            codec.setParameters(
+                Bundle().apply {
+                    putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0)
+                }
+            )
+        }
+    }
 
     private fun drainEncoder(
         codec: MediaCodec,
